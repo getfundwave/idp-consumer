@@ -12,6 +12,7 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "predocs": "npm run build",
+    "docs": "npx jsdoc-to-markdown dist/index.js > DOCUMENTATION.md",
     "prepublish": "npm run build"
   },
   "keywords": [],
