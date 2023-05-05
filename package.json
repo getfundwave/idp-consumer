@@ -1,0 +1,33 @@
+{
+  "name": "@fundwave/oidc-consumer",
+  "version": "2.0.1",
+  "description": "OIDC consumer middlewares and utilities",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "files": [
+    "dist/**/*"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "predocs": "npm run build",
+    "prepublish": "npm run build"
+  },
+  "keywords": [],
+  "author": "fundwave",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "express-session": "^1.17.3",
+    "@types/express-session": "^1.17.5",
+    "simple-oauth2": "^5.0.0",
+    "@types/simple-oauth2": "^5.0.4",
+    "uuid": "^9.0.0"
+  },
+  "peerDependencies": {
+    "@types/express": "^4.17.14"
+  },
+  "devDependencies": {
+    "typescript": "^4.9.4"
+  }
+}

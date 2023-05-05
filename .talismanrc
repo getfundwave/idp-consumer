@@ -1,0 +1,6 @@
+fileignoreconfig:
+- filename: src/constants/index.ts
+  checksum: 4c18d0f908c77e14161720e93ed24c9f5a1e957dc3dd0c160cec7a9ea8fbf28b
+scopeconfig:
+- scope: node
+version: "1.0"
