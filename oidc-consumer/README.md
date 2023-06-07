@@ -102,6 +102,8 @@ npm install @fundwave/oidc-consumer # comes prepackaged with types
 
       Other middlewares and handlers can be chained in the call e.g. **authenticateToken**.
 
+      Once these handler have been prefixed, you may access the updated token at `request.headers.token`
+
    2. #### Token Management
 
       1. ##### Refresh Token
