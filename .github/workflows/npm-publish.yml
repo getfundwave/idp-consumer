@@ -12,7 +12,7 @@ env:
 
 jobs:
   changes:
-    runs-on: "ubuntu-22.04"
+    runs-on: ubuntu-latest
     outputs:
       packages: ${{ steps.filter.outputs.changes }}
     steps:
@@ -66,12 +66,34 @@ jobs:
           echo "Releasing version ${VERSION} on branch ${BRANCH}"
           gh release create ${VERSION} --target ${BRANCH} --generate-notes ${PRERELEASE}
 
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        working-directory: ./${{ matrix.package }}
+        run: npm ci
+
+      - name: Publish package to npm
+        working-directory: ./${{ matrix.package }}
+        run: npm publish --tag $BRANCH_TAG --access public
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.NPMJS_TOKEN}}
+
+      - name: Publish package to Gitlab
+        working-directory: ./${{ matrix.package }}
+        env:
+          GITLAB_TOKEN: ${{secrets.GITLAB_TOKEN}}
+        run: |
+          echo @fundwave:registry=https://gitlab.com/api/v4/projects/24877554/packages/npm/ >> ~/.npmrc
+          echo //gitlab.com/api/v4/projects/24877554/packages/npm/:_authToken=$GITLAB_TOKEN >> ~/.npmrc
+          npm publish --tag $BRANCH_TAG
+
       - name: Commit changes
         env:
           VERSION: ${{ steps.version.outputs.newTag }}
         run: |
-          git config user.name github-actions[bot]
-          git config user.email github-actions[bot]@users.noreply.github.com
           git commit -am "CI: bumped ${{ matrix.package }} version to $VERSION"
 
       - name: Push changes
