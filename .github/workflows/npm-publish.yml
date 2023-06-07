@@ -1,0 +1,105 @@
+name: Release and Publish
+
+on:
+  push:
+    paths:
+      - oidc-consumer/**
+
+env:
+  BRANCH_TAG: "${{ github.ref_name == 'main' && 'latest' || github.ref_name }}"
+  BRANCH: ${{ github.ref_name }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      packages: ${{ steps.filter.outputs.changes }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            oidc-consumer:
+              - 'oidc-consumer/**'
+
+  release:
+    name: Bump package-version and create release
+    runs-on: ubuntu-latest
+    needs: changes
+    strategy:
+      max-parallel: 1
+      matrix:
+        package: ${{ fromJSON(needs.changes.outputs.packages) }}
+    steps:
+      - uses: actions/checkout@v3
+      - run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git pull origin ${{ github.ref }}
+
+      - name: ${{ matrix.package }} version bump
+        id: version
+        uses: phips28/gh-action-bump-version@v9.1.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          major-wording: ${{ env.BRANCH == 'main' && '[bump major]' || '[bump major --force]' }}
+          minor-wording: ${{ env.BRANCH == 'main' && '[bump minor]' || '[bump minor --force]' }}
+          patch-wording: ${{ null }}
+          rc-wording: ${{ null }}
+          default: "${{ env.BRANCH == 'main' && 'patch' || 'prerelease' }}"
+          preid: "${{ env.BRANCH }}"
+          skip-tag: "true"
+          skip-push: "true"
+          skip-commit: "true"
+          bump-policy: "ignore"
+          PACKAGEJSON_DIR: "${{ matrix.package }}"
+
+      - name: Release
+        env:
+          VERSION: ${{ steps.version.outputs.newTag }}
+        run: |
+          if [ "${BRANCH}" != "main" ]; then PRERELEASE="-p"; fi
+          echo "Releasing version ${VERSION} on branch ${BRANCH}"
+          gh release create ${VERSION} --target ${BRANCH} --generate-notes ${PRERELEASE}
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        working-directory: ./${{ matrix.package }}
+        run: npm ci
+
+      - name: Publish package to npm
+        working-directory: ./${{ matrix.package }}
+        run: npm publish --tag $BRANCH_TAG --access public
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.NPMJS_TOKEN}}
+
+      - name: Publish package to Gitlab
+        working-directory: ./${{ matrix.package }}
+        env:
+          GITLAB_TOKEN: ${{secrets.GITLAB_TOKEN}}
+        run: |
+          echo @fundwave:registry=https://gitlab.com/api/v4/projects/24877554/packages/npm/ >> ./.npmrc
+          echo //gitlab.com/api/v4/projects/24877554/packages/npm/:_authToken=$GITLAB_TOKEN >> ./.npmrc
+          npm publish --tag $BRANCH_TAG
+
+      - name: Commit changes
+        if: always()
+        env:
+          VERSION: ${{ steps.version.outputs.newTag }}
+        run: |
+          git commit -am "CI: bumped ${{ matrix.package }} version to $VERSION"
+
+      - name: Push changes
+        if: always()
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ env.GITHUB_TOKEN }}
+          branch: ${{ github.ref }}
