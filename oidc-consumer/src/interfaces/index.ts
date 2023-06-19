@@ -7,6 +7,7 @@ export interface IConsumerOptions {
   callback_route?: string;
   default_callback_route?: string;
   callback_url?: string;
+  allowedOrigins: Array<RegExp | string>;
 
   sessionOptions: SessionOptions;
   clientConfig: ModuleOptions<string>;

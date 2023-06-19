@@ -15,6 +15,7 @@ class OidcConsumer {
   callback_route?: string;
   default_callback_route?: string;
   callback_url?: string;
+  allowedOrigins: Array<RegExp | string>;
 
   session: typeof session;
   #expressSession: typeof session;
@@ -38,6 +39,11 @@ class OidcConsumer {
      * defaults to {{response.baseURL}}/callback
      */
     this.callback_url = options?.callback_url;
+
+    /**
+     * list of allowed-origins
+     */
+    this.allowedOrigins = options?.allowedOrigins || ["*"];
 
     /**
      * options to be passed to setup express-sessions
@@ -101,6 +107,12 @@ class OidcConsumer {
       : this.callback_url || // assign callback url or...
         `${request.protocol}://${request.headers.host}${this.callback_route || `${request.baseUrl}/callback`}`; // parse and assign callback route
 
+    if (!this.isOriginAllowed(redirectUri, this.allowedOrigins))
+      request.session.destroy((error) => {
+        if (!error) return;
+        console.error(error);
+      });
+
     (request.session as unknown as ICustomSession).redirect_uri = redirectUri;
 
     const state = this.#getSessionState(request);
@@ -116,6 +128,16 @@ class OidcConsumer {
 
     response.redirect(authorizationURI);
   }
+
+  isOriginAllowed(origin: string, allowedOrigins: any) {
+    if (allowedOrigins instanceof String || typeof allowedOrigins === "string") return origin === allowedOrigins;
+    else if (allowedOrigins instanceof RegExp) return allowedOrigins.test(origin);
+    else if (Array.isArray(allowedOrigins))
+      for (const allowedOrigin of allowedOrigins) {
+        if (this.isOriginAllowed(origin, allowedOrigin)) return true;
+      }
+    else return false;
+  };
 
   // returns and stores state for a request
   #getSessionState(request) {
