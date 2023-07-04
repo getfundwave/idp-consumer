@@ -15,6 +15,7 @@ class OidcConsumer {
   callback_route?: string;
   default_callback_route?: string;
   callback_url?: string;
+  permitExternalCallbacks: boolean;
   allowedOrigins: Array<RegExp | string>;
 
   session: typeof session;
@@ -46,13 +47,19 @@ class OidcConsumer {
     this.allowedOrigins = options?.allowedOrigins || ["*"];
 
     /**
+     * return IDP callback to a different service post login
+     */
+    this.permitExternalCallbacks = Boolean(options?.permitExternalCallbacks);
+    if (this.permitExternalCallbacks) console.warn("OIDC-COnsumer: It is advisable to not share the auth-code with services that didn't initiate the request");
+
+    /**
      * options to be passed to setup express-sessions
      */
     this.sessionOptions = options.sessionOptions;
     this.#expressSession = session(this.sessionOptions).bind(this);
 
     /**
-     * session-instance created using config passed from the user
+     * session-instance created using config passed from the user (read-only)
      */
     this.session = session(this.sessionOptions).bind(this);
 
@@ -102,10 +109,11 @@ class OidcConsumer {
 
     if (!requestRedirectURI && !this.callback_url && !this.callback_route) return response.status(400).json({ message: "Missing Callback URL" });
 
-    const redirectUri = !(!requestRedirectURI || requestRedirectURI === "") // check if valid redirect-uri was passed
-      ? (requestRedirectURI as string) // if valid set as is otherwise...
-      : this.callback_url || // assign callback url or...
-        `${request.protocol}://${request.headers.host}${this.callback_route || `${request.baseUrl}/callback`}`; // parse and assign callback route
+    let redirectUri =
+      this.callback_url || // assign callback url or...
+      `${request.protocol}://${request.headers.host}${this.callback_route || `${request.baseUrl}/callback`}`; // parse and assign callback route
+
+    if (this.permitExternalCallbacks && Boolean(requestRedirectURI)) redirectUri = String(requestRedirectURI);
 
     if (!this.isOriginAllowed(redirectUri, this.allowedOrigins))
       request.session.destroy((error) => {
@@ -137,7 +145,7 @@ class OidcConsumer {
         if (this.isOriginAllowed(origin, allowedOrigin)) return true;
       }
     else return false;
-  };
+  }
 
   // returns and stores state for a request
   #getSessionState(request) {
