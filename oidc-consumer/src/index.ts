@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import session, { SessionOptions } from "express-session";
 import { AuthorizationCode, AuthorizationTokenConfig, ModuleOptions, WreckHttpOptions } from "simple-oauth2";
-import { IConsumerOptions, ICustomSession } from "./interfaces/index.js";
+import { IConsumerOptionsWithSession, IConsumerOptionsWithSessionConfig, ICustomSession } from "./interfaces/index.js";
 import { v4 as uuidv4 } from "uuid";
 import { AuthDefault, ClientDefault, OptionsDefault } from "./constants/index.js";
 
@@ -23,7 +23,7 @@ class OidcConsumer {
   #oauth2client: AuthorizationCode<"client-id">;
   clientConfig: ModuleOptions<string>;
 
-  constructor(options?: IConsumerOptions) {
+  constructor(options?: IConsumerOptionsWithSession | IConsumerOptionsWithSessionConfig) {
     /**
      * scope in which the tokens are issued
      */
@@ -40,10 +40,14 @@ class OidcConsumer {
     this.callback_url = options?.callback_url;
 
     /**
-     * options to be passed to setup express-sessions
+     * options to be passed to setup express-sessions (defaults to true)
      */
-    this.sessionOptions = options.sessionOptions;
-    this.#expressSession = session(this.sessionOptions).bind(this);
+    if ((options as IConsumerOptionsWithSessionConfig).sessionOptions) {
+      this.sessionOptions = (options as IConsumerOptionsWithSessionConfig).sessionOptions;
+      this.#expressSession = session(this.sessionOptions).bind(this);
+    } else if (Boolean((options as IConsumerOptionsWithSession).session)) {
+      this.#expressSession = (options as IConsumerOptionsWithSession).session.bind(this);
+    }
 
     /**
      * session-instance created using config passed from the user
