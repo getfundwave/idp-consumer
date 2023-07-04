@@ -195,6 +195,7 @@ class OidcConsumer {
     if (!destination) return response.status(400).json({ message: "Missing destination" });
 
     try {
+      response.locals.sessionData = request.session;
       if (request.session)
         request.session.destroy((error) => {
           if (!error) return;
@@ -211,8 +212,7 @@ class OidcConsumer {
         httpOptions
       );
 
-      (request.headers.token as any) = token;
-
+      response.locals.token = token;
       next();
     } catch (error) {
       console.log({ error });
