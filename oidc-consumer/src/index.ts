@@ -109,13 +109,9 @@ class OidcConsumer {
 
     if (!requestRedirectURI && !this.callback_url && !this.callback_route) return response.status(400).json({ message: "Missing Callback URL" });
 
-    let redirectUri =
-      this.callback_url || // assign callback url or...
-      `${request.protocol}://${request.headers.host}${this.callback_route || `${request.baseUrl}/callback`}`; // parse and assign callback route
+    const redirectUri = this.getCallbackURL(request);
 
-    if (this.permitExternalCallbacks && Boolean(requestRedirectURI)) redirectUri = String(requestRedirectURI);
-
-    if (!this.isOriginAllowed(redirectUri, this.allowedOrigins))
+    if (!this.isOriginAllowed(String(requestRedirectURI), this.allowedRedirectURIs)) {
       request.session.destroy((error) => {
         if (!error) return;
         console.error(error);
@@ -123,7 +119,7 @@ class OidcConsumer {
       return response.status(403).json({ message: "Redirects are not permitted to provided URL" });
     }
 
-    (request.session as unknown as ICustomSession).redirect_uri = redirectUri;
+    (request.session as unknown as ICustomSession).redirect_uri = String(requestRedirectURI);
 
     const state = this.#getSessionState(request);
 
@@ -147,6 +143,10 @@ class OidcConsumer {
         if (this.isOriginAllowed(origin, allowedOrigin)) return true;
       }
     else return false;
+  }
+
+  getCallbackURL(request: Request) {
+    return this.callback_url || `${request.protocol}://${request.headers.host}${this.callback_route || `${request.baseUrl}/callback`}`; // parse and assign callback route
   }
 
   // returns and stores state for a request
@@ -215,7 +215,7 @@ class OidcConsumer {
       const token = await this.#oauth2client.getToken(
         {
           code: code as string,
-          redirect_uri: destination,
+          redirect_uri: this.getCallbackURL(request),
           scope: this.scope,
           ...queryParams, // permits passing additional query-params to the IDP
         } as unknown as AuthorizationTokenConfig, // simple-oauth2 doesn't permit passing additional params; hence forcing via types
