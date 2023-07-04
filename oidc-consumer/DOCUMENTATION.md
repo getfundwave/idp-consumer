@@ -9,8 +9,7 @@ Middlewares and utilities for OIDC
     * [.scope](#OidcConsumer+scope)
     * [.callback_route](#OidcConsumer+callback_route)
     * [.callback_url](#OidcConsumer+callback_url)
-    * [.allowedOrigins](#OidcConsumer+allowedOrigins)
-    * [.permitExternalCallbacks](#OidcConsumer+permitExternalCallbacks)
+    * [.allowedRedirectURIs](#OidcConsumer+allowedRedirectURIs)
     * [.sessionOptions](#OidcConsumer+sessionOptions)
     * [.session](#OidcConsumer+session)
     * [.clientConfig](#OidcConsumer+clientConfig)
@@ -40,16 +39,10 @@ route (internal) on server where idp would redirect to (optional)
 defaults to {{response.baseURL}}/callback
 
 **Kind**: instance property of [<code>OidcConsumer</code>](#OidcConsumer)  
-<a name="OidcConsumer+allowedOrigins"></a>
+<a name="OidcConsumer+allowedRedirectURIs"></a>
 
-### oidcConsumer.allowedOrigins
+### oidcConsumer.allowedRedirectURIs
 list of allowed-origins
-
-**Kind**: instance property of [<code>OidcConsumer</code>](#OidcConsumer)  
-<a name="OidcConsumer+permitExternalCallbacks"></a>
-
-### oidcConsumer.permitExternalCallbacks
-return IDP callback to a different service post login
 
 **Kind**: instance property of [<code>OidcConsumer</code>](#OidcConsumer)  
 <a name="OidcConsumer+sessionOptions"></a>
