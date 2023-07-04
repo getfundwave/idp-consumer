@@ -58,14 +58,6 @@ jobs:
           bump-policy: "ignore"
           PACKAGEJSON_DIR: "${{ matrix.package }}"
 
-      - name: Release
-        env:
-          VERSION: ${{ steps.version.outputs.newTag }}
-        run: |
-          if [ "${BRANCH}" != "main" ]; then PRERELEASE="-p"; fi
-          echo "Releasing version ${VERSION} on branch ${BRANCH}"
-          gh release create ${VERSION} --target ${BRANCH} --generate-notes ${PRERELEASE}
-
       - uses: actions/setup-node@v3
         with:
           node-version: 16
@@ -74,6 +66,14 @@ jobs:
       - name: Install dependencies
         working-directory: ./${{ matrix.package }}
         run: npm ci
+
+      - name: Release
+        env:
+          VERSION: ${{ steps.version.outputs.newTag }}
+        run: |
+          if [ "${BRANCH}" != "main" ]; then PRERELEASE="-p"; fi
+          echo "Releasing version ${VERSION} on branch ${BRANCH}"
+          gh release create ${VERSION} --target ${BRANCH} --generate-notes ${PRERELEASE}
 
       - name: Publish package to npm
         working-directory: ./${{ matrix.package }}

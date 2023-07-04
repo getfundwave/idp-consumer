@@ -46,12 +46,6 @@ class OidcConsumer {
     this.allowedRedirectURIs = options.allowedRedirectURIs;
 
     /**
-     * return IDP callback to a different service post login
-     */
-    this.permitExternalCallbacks = Boolean(options?.permitExternalCallbacks);
-    if (this.permitExternalCallbacks) console.warn("OIDC-COnsumer: It is advisable to not share the auth-code with services that didn't initiate the request");
-
-    /**
      * options to be passed to setup express-sessions
      */
     this.sessionOptions = options.sessionOptions;
