@@ -15,8 +15,7 @@ class OidcConsumer {
   callback_route?: string;
   default_callback_route?: string;
   callback_url?: string;
-  permitExternalCallbacks: boolean;
-  allowedOrigins: Array<RegExp | string>;
+  allowedRedirectURIs: Array<RegExp | string>;
 
   session: typeof session;
   #expressSession: typeof session;
@@ -44,7 +43,7 @@ class OidcConsumer {
     /**
      * list of allowed-origins
      */
-    this.allowedOrigins = options?.allowedOrigins || ["*"];
+    this.allowedRedirectURIs = options.allowedRedirectURIs;
 
     /**
      * return IDP callback to a different service post login
@@ -105,13 +104,13 @@ class OidcConsumer {
    * @throws 400 - Missing Callback URL
    */
   async authRedirect(request: Request, response: Response, queryParams?: Object) {
-    const { redirectUri: requestRedirectURI } = request.query;
+    const { redirectUri: destination } = request.query;
 
-    if (!requestRedirectURI && !this.callback_url && !this.callback_route) return response.status(400).json({ message: "Missing Callback URL" });
+    if (!destination && !this.callback_url && !this.callback_route) return response.status(400).json({ message: "Missing Callback URL" });
 
-    const redirectUri = this.getCallbackURL(request);
+    const callbackRedirectURI = this.getCallbackURL(request);
 
-    if (!this.isOriginAllowed(String(requestRedirectURI), this.allowedRedirectURIs)) {
+    if (!this.isOriginAllowed(String(destination), this.allowedRedirectURIs)) {
       request.session.destroy((error) => {
         if (!error) return;
         console.error(error);
@@ -119,12 +118,12 @@ class OidcConsumer {
       return response.status(403).json({ message: "Redirects are not permitted to provided URL" });
     }
 
-    (request.session as unknown as ICustomSession).redirect_uri = String(requestRedirectURI);
+    (request.session as unknown as ICustomSession).redirect_uri = String(destination);
 
     const state = this.#getSessionState(request);
 
     const authorizationURI = this.#oauth2client.authorizeURL({
-      redirect_uri: redirectUri,
+      redirect_uri: callbackRedirectURI,
       scope: this.scope,
       state,
       ...(queryParams || {}),
@@ -135,12 +134,14 @@ class OidcConsumer {
     response.redirect(authorizationURI);
   }
 
-  isOriginAllowed(origin: string, allowedOrigins: any) {
-    if (allowedOrigins instanceof String || typeof allowedOrigins === "string") return origin === allowedOrigins;
-    else if (allowedOrigins instanceof RegExp) return allowedOrigins.test(origin);
+  isOriginAllowed(url: string, allowedOrigins: any) {
+    if (allowedOrigins instanceof String || typeof allowedOrigins === "string") {
+      const { origin } = new URL(url);
+      return origin === allowedOrigins;
+    } else if (allowedOrigins instanceof RegExp) return allowedOrigins.test(url);
     else if (Array.isArray(allowedOrigins))
       for (const allowedOrigin of allowedOrigins) {
-        if (this.isOriginAllowed(origin, allowedOrigin)) return true;
+        if (this.isOriginAllowed(url, allowedOrigin)) return true;
       }
     else return false;
   }
