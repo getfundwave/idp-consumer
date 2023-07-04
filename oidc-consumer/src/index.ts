@@ -120,6 +120,8 @@ class OidcConsumer {
         if (!error) return;
         console.error(error);
       });
+      return response.status(403).json({ message: "Redirects are not permitted to provided URL" });
+    }
 
     (request.session as unknown as ICustomSession).redirect_uri = redirectUri;
 
