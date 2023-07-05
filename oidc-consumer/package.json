@@ -1,6 +1,6 @@
 {
   "name": "@fundwave/oidc-consumer",
-  "version": "0.0.2-allowed-destinations.1",
+  "version": "0.0.2-allowed-destinations.2",
   "description": "OIDC consumer middlewares and utilities",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
