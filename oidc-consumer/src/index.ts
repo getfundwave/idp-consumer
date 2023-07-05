@@ -141,7 +141,7 @@ class OidcConsumer {
   }
 
   getCallbackURL(request: Request) {
-    return this.callback_url || `${request.protocol}://${request.headers.host}${this.callback_route || `${request.baseUrl}/callback`}`; // parse and assign callback route
+    return this.callback_url || `https://${request.headers.host}${this.callback_route || `${request.baseUrl}/callback`}`; // parse and assign callback route
   }
 
   // returns and stores state for a request
