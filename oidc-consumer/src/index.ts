@@ -104,7 +104,7 @@ class OidcConsumer {
 
     const callbackRedirectURI = this.getCallbackURL(request);
 
-    if (!this.isOriginAllowed(String(destination), this.allowedRedirectURIs)) {
+    if (!this.isRedirectUriAllowed(String(destination), this.allowedRedirectURIs)) {
       request.session.destroy((error) => {
         if (!error) return;
         console.error(error);
@@ -128,14 +128,14 @@ class OidcConsumer {
     response.redirect(authorizationURI);
   }
 
-  isOriginAllowed(url: string, allowedOrigins: any) {
-    if (allowedOrigins instanceof String || typeof allowedOrigins === "string") {
+  isRedirectUriAllowed(url: string, allowedUris: any) {
+    if (allowedUris instanceof String || typeof allowedUris === "string") {
       const { origin } = new URL(url);
-      return origin === allowedOrigins;
-    } else if (allowedOrigins instanceof RegExp) return allowedOrigins.test(url);
-    else if (Array.isArray(allowedOrigins))
-      for (const allowedOrigin of allowedOrigins) {
-        if (this.isOriginAllowed(url, allowedOrigin)) return true;
+      return origin === allowedUris;
+    } else if (allowedUris instanceof RegExp) return allowedUris.test(url);
+    else if (Array.isArray(allowedUris))
+      for (const allowedOrigin of allowedUris) {
+        if (this.isRedirectUriAllowed(url, allowedOrigin)) return true;
       }
     else return false;
   }
