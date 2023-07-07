@@ -9,6 +9,7 @@ Middlewares and utilities for OIDC
     * [.scope](#OidcConsumer+scope)
     * [.callback_route](#OidcConsumer+callback_route)
     * [.callback_url](#OidcConsumer+callback_url)
+    * [.allowedRedirectURIs](#OidcConsumer+allowedRedirectURIs)
     * [.sessionOptions](#OidcConsumer+sessionOptions)
     * [.session](#OidcConsumer+session)
     * [.clientConfig](#OidcConsumer+clientConfig)
@@ -36,6 +37,12 @@ route (internal) on server where idp would redirect to (optional)
 ### oidcConsumer.callback\_url
 route (internal) on server where idp would redirect to (optional)
 defaults to {{response.baseURL}}/callback
+
+**Kind**: instance property of [<code>OidcConsumer</code>](#OidcConsumer)  
+<a name="OidcConsumer+allowedRedirectURIs"></a>
+
+### oidcConsumer.allowedRedirectURIs
+array of allowed-origins; supported types: glob-string, reg-exp
 
 **Kind**: instance property of [<code>OidcConsumer</code>](#OidcConsumer)  
 <a name="OidcConsumer+sessionOptions"></a>

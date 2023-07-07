@@ -4,6 +4,7 @@ import { AuthorizationCode, AuthorizationTokenConfig, ModuleOptions, WreckHttpOp
 import { IConsumerOptions, ICustomSession } from "./interfaces/index.js";
 import { v4 as uuidv4 } from "uuid";
 import { AuthDefault, ClientDefault, OptionsDefault } from "./constants/index.js";
+import { minimatch } from "minimatch";
 
 /**
  * Middlewares and utilities for OIDC
@@ -13,8 +14,8 @@ class OidcConsumer {
   scope: string;
 
   callback_route?: string;
-  default_callback_route?: string;
   callback_url?: string;
+  allowedRedirectURIs: Array<RegExp | string>;
 
   session: typeof session;
   #expressSession: typeof session;
@@ -38,6 +39,11 @@ class OidcConsumer {
      * defaults to {{response.baseURL}}/callback
      */
     this.callback_url = options?.callback_url;
+
+    /**
+     * array of allowed-origins; supported types: glob-string, reg-exp
+     */
+    this.allowedRedirectURIs = options.allowedRedirectURIs;
 
     /**
      * options to be passed to setup express-sessions
@@ -92,21 +98,25 @@ class OidcConsumer {
    * @throws 400 - Missing Callback URL
    */
   async authRedirect(request: Request, response: Response, queryParams?: Object) {
-    const { redirectUri: requestRedirectURI } = request.query;
+    const { redirectUri: destination } = request.query;
 
-    if (!requestRedirectURI && !this.callback_url && !this.callback_route) return response.status(400).json({ message: "Missing Callback URL" });
+    if (!destination) return response.status(400).json({ message: "Missing Callback URL" });
 
-    const redirectUri = !(!requestRedirectURI || requestRedirectURI === "") // check if valid redirect-uri was passed
-      ? (requestRedirectURI as string) // if valid set as is otherwise...
-      : this.callback_url || // assign callback url or...
-        `${request.protocol}://${request.headers.host}${this.callback_route || `${request.baseUrl}/callback`}`; // parse and assign callback route
+    if (!this.isRedirectUriAllowed(String(destination), this.allowedRedirectURIs)) {
+      request.session.destroy((error) => {
+        if (!error) return;
+        console.error(error);
+      });
+      return response.status(403).json({ message: "Redirects are not permitted to provided URL" });
+    }
 
-    (request.session as unknown as ICustomSession).redirect_uri = redirectUri;
+    (request.session as unknown as ICustomSession).redirect_uri = String(destination);
 
     const state = this.#getSessionState(request);
+    const callbackRedirectURI = this.getCallbackURL(request);
 
     const authorizationURI = this.#oauth2client.authorizeURL({
-      redirect_uri: redirectUri,
+      redirect_uri: callbackRedirectURI,
       scope: this.scope,
       state,
       ...(queryParams || {}),
@@ -115,6 +125,20 @@ class OidcConsumer {
     request.session.save();
 
     response.redirect(authorizationURI);
+  }
+
+  isRedirectUriAllowed(url: string, allowedUris: any) {
+    if (allowedUris instanceof String || typeof allowedUris === "string") return minimatch(url, allowedUris as string);
+    else if (allowedUris instanceof RegExp) return allowedUris.test(url);
+    else if (Array.isArray(allowedUris))
+      for (const allowedOrigin of allowedUris) {
+        if (this.isRedirectUriAllowed(url, allowedOrigin)) return true;
+      }
+    else return false;
+  }
+
+  getCallbackURL(request: Request) {
+    return this.callback_url || `https://${request.headers.host}${this.callback_route || `${request.baseUrl}/callback`}`; // parse and assign callback route
   }
 
   // returns and stores state for a request
@@ -173,6 +197,7 @@ class OidcConsumer {
     if (!destination) return response.status(400).json({ message: "Missing destination" });
 
     try {
+      response.locals.sessionData = request.session;
       if (request.session)
         request.session.destroy((error) => {
           if (!error) return;
@@ -182,15 +207,14 @@ class OidcConsumer {
       const token = await this.#oauth2client.getToken(
         {
           code: code as string,
-          redirect_uri: destination,
+          redirect_uri: this.getCallbackURL(request),
           scope: this.scope,
           ...queryParams, // permits passing additional query-params to the IDP
         } as unknown as AuthorizationTokenConfig, // simple-oauth2 doesn't permit passing additional params; hence forcing via types
         httpOptions
       );
 
-      (request.headers.token as any) = token;
-
+      response.locals.token = token;
       next();
     } catch (error) {
       console.log({ error });
