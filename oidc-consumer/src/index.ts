@@ -13,7 +13,6 @@ class OidcConsumer {
   scope: string;
 
   callback_route?: string;
-  default_callback_route?: string;
   callback_url?: string;
   allowedRedirectURIs: Array<RegExp | string>;
 
@@ -100,9 +99,7 @@ class OidcConsumer {
   async authRedirect(request: Request, response: Response, queryParams?: Object) {
     const { redirectUri: destination } = request.query;
 
-    if (!destination && !this.callback_url && !this.callback_route) return response.status(400).json({ message: "Missing Callback URL" });
-
-    const callbackRedirectURI = this.getCallbackURL(request);
+    if (!destination) return response.status(400).json({ message: "Missing Callback URL" });
 
     if (!this.isRedirectUriAllowed(String(destination), this.allowedRedirectURIs)) {
       request.session.destroy((error) => {
@@ -115,6 +112,7 @@ class OidcConsumer {
     (request.session as unknown as ICustomSession).redirect_uri = String(destination);
 
     const state = this.#getSessionState(request);
+    const callbackRedirectURI = this.getCallbackURL(request);
 
     const authorizationURI = this.#oauth2client.authorizeURL({
       redirect_uri: callbackRedirectURI,
