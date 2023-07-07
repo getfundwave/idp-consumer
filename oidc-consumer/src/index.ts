@@ -4,6 +4,7 @@ import { AuthorizationCode, AuthorizationTokenConfig, ModuleOptions, WreckHttpOp
 import { IConsumerOptions, ICustomSession } from "./interfaces/index.js";
 import { v4 as uuidv4 } from "uuid";
 import { AuthDefault, ClientDefault, OptionsDefault } from "./constants/index.js";
+import { minimatch } from "minimatch";
 
 /**
  * Middlewares and utilities for OIDC
@@ -40,7 +41,7 @@ class OidcConsumer {
     this.callback_url = options?.callback_url;
 
     /**
-     * list of allowed-origins
+     * array of allowed-origins; supported types: glob-string, reg-exp
      */
     this.allowedRedirectURIs = options.allowedRedirectURIs;
 
@@ -51,7 +52,7 @@ class OidcConsumer {
     this.#expressSession = session(this.sessionOptions).bind(this);
 
     /**
-     * session-instance created using config passed from the user (read-only)
+     * session-instance created using config passed from the user
      */
     this.session = session(this.sessionOptions).bind(this);
 
@@ -127,10 +128,8 @@ class OidcConsumer {
   }
 
   isRedirectUriAllowed(url: string, allowedUris: any) {
-    if (allowedUris instanceof String || typeof allowedUris === "string") {
-      const { origin } = new URL(url);
-      return origin === allowedUris;
-    } else if (allowedUris instanceof RegExp) return allowedUris.test(url);
+    if (allowedUris instanceof String || typeof allowedUris === "string") return minimatch(url, allowedUris as string);
+    else if (allowedUris instanceof RegExp) return allowedUris.test(url);
     else if (Array.isArray(allowedUris))
       for (const allowedOrigin of allowedUris) {
         if (this.isRedirectUriAllowed(url, allowedOrigin)) return true;

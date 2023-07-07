@@ -24,10 +24,11 @@
   "author": "fundwave-authors",
   "license": "MIT",
   "dependencies": {
-    "express-session": "^1.17.3",
     "@types/express-session": "^1.17.5",
-    "simple-oauth2": "^5.0.0",
     "@types/simple-oauth2": "^5.0.4",
+    "express-session": "^1.17.3",
+    "minimatch": "^9.0.3",
+    "simple-oauth2": "^5.0.0",
     "uuid": "^9.0.0"
   },
   "peerDependencies": {
