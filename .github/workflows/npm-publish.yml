@@ -76,12 +76,14 @@ jobs:
           gh release create ${VERSION} --target ${BRANCH} --generate-notes ${PRERELEASE}
 
       - name: Publish package to npm
+        if: always()
         working-directory: ./${{ matrix.package }}
         run: npm publish --tag $BRANCH_TAG --access public
         env:
           NODE_AUTH_TOKEN: ${{secrets.NPMJS_TOKEN}}
 
       - name: Publish package to Gitlab
+        if: always()      
         working-directory: ./${{ matrix.package }}
         env:
           GITLAB_TOKEN: ${{secrets.GITLAB_TOKEN}}
