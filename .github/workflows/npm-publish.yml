@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - oidc-consumer/**
+  workflow_dispatch:
 
 env:
   BRANCH_TAG: "${{ github.ref_name == 'main' && 'latest' || github.ref_name }}"
