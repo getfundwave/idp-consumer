@@ -42,7 +42,7 @@ defaults to {{response.baseURL}}/callback
 <a name="OidcConsumer+allowedRedirectURIs"></a>
 
 ### oidcConsumer.allowedRedirectURIs
-list of allowed-origins
+array of allowed-origins; supported types: glob-string, reg-exp
 
 **Kind**: instance property of [<code>OidcConsumer</code>](#OidcConsumer)  
 <a name="OidcConsumer+sessionOptions"></a>
@@ -54,7 +54,7 @@ options to be passed to setup express-sessions
 <a name="OidcConsumer+session"></a>
 
 ### oidcConsumer.session
-session-instance created using config passed from the user (read-only)
+session-instance created using config passed from the user
 
 **Kind**: instance property of [<code>OidcConsumer</code>](#OidcConsumer)  
 <a name="OidcConsumer+clientConfig"></a>
