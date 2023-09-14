@@ -10,6 +10,8 @@
   ],
   "scripts": {
     "build": "tsc",
+    "postbuild": "npm run build:cjs",
+    "build:cjs": "tsc --module commonjs --outDir dist/cjs --declaration false",
     "dev": "tsc --watch",
     "predocs": "npm run build",
     "docs": "npx jsdoc-to-markdown dist/index.js > DOCUMENTATION.md",
