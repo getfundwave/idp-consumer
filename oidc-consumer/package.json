@@ -1,15 +1,13 @@
 {
   "name": "@fundwave/oidc-consumer",
-  "version": "0.0.3-cjs.1",
+  "version": "1.0.1",
   "description": "OIDC consumer middlewares and utilities",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
-    ".": [
-      {
-        "require": "./dist/cjs/index.js"
-      }
-    ]
+    ".": {
+      "require": "./dist/cjs/index.js"
+    }
   },
   "files": [
     "dist/**/*"
