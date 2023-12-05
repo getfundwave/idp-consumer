@@ -6,7 +6,8 @@
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "require": "./dist/cjs/index.js"
+      "require": "./dist/cjs/index.js",
+      "import": "./dist/index.js"
     }
   },
   "files": [
