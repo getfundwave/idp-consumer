@@ -122,10 +122,24 @@ class OidcConsumer {
       ...(queryParams || {}),
     });
 
-    request.session.save();
+    request.session.save(() => {
+    try{
+      this.verifySession(request);
 
-    response.redirect(authorizationURI);
+      response.redirect(authorizationURI);
+    } catch (error) {
+      next(error);
+    } 
+    });
   }
+
+  verifySession(request: Request, throwError: Boolean = false) {
+    delete request.session.state;
+    request.session.reload();
+    const state = request.session.state;
+    if (!state && !throwError) this.verifySession(request, true);
+  }
+
 
   isRedirectUriAllowed(url: string, allowedUris: any) {
     if (allowedUris instanceof String || typeof allowedUris === "string") return minimatch(url, allowedUris as string);
