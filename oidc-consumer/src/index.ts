@@ -121,25 +121,26 @@ class OidcConsumer {
       state,
       ...(queryParams || {}),
     });
+    response.locals.authorizationURI = authorizationURI;
 
-    request.session.save(() => {
-    try{
-      this.verifySession(request);
-
-      response.redirect(authorizationURI);
-    } catch (error) {
-      next(error);
-    } 
+    request.session.save(async () => {
+      try {
+        this.verifySession(request, response);
+      } catch (error) {
+        console.log("Error occurred while verifying session");
+      }
     });
   }
 
-  verifySession(request: Request, throwError: Boolean = false) {
-    delete request.session.state;
-    request.session.reload();
-    const state = request.session.state;
-    if (!state && !throwError) this.verifySession(request, true);
+  verifySession(request: Request, response: Response, throwError: Boolean = false) {
+    delete (request.session as ICustomSession).state;
+    request.session.reload(() => {
+      const state = (request.session as ICustomSession).state;
+      if (state) response.redirect(response.locals.authorizationURI);
+      else if (!state && !throwError) this.verifySession(request, response, true);
+      else if (!state && throwError) response.status(424).json({ message: "SESSION_VERIFICATION_FAILED" });
+    });
   }
-
 
   isRedirectUriAllowed(url: string, allowedUris: any) {
     if (allowedUris instanceof String || typeof allowedUris === "string") return minimatch(url, allowedUris as string);
