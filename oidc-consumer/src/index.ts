@@ -110,7 +110,7 @@ class OidcConsumer {
       return response.status(403).json({ message: "Redirects are not permitted to provided URL" });
     }
 
-    (request.session as unknown as ICustomSession).redirect_uri = String(destination);
+    (request.session as ICustomSession).redirect_uri = String(destination);
 
     const state = this.#getSessionState(request);
     const callbackRedirectURI = this.getCallbackURL(request);
@@ -121,25 +121,26 @@ class OidcConsumer {
       state,
       ...(queryParams || {}),
     });
+    response.locals.authorizationURI = authorizationURI;
 
-    request.session.save(() => {
-    try{
-      this.verifySession(request);
-
-      response.redirect(authorizationURI);
-    } catch (error) {
-      next(error);
-    } 
+    request.session.save(async () => {
+      try {
+        this.verifySession(request, response);
+      } catch (error) {
+        console.log("Error occurred while verifying session");
+      }
     });
   }
 
-  verifySession(request: Request, throwError: Boolean = false) {
-    delete request.session.state;
-    request.session.reload();
-    const state = request.session.state;
-    if (!state && !throwError) this.verifySession(request, true);
+  verifySession(request: Request, response: Response, throwError: Boolean = false) {
+    delete (request.session as ICustomSession).state;
+    request.session.reload(() => {
+      const state = (request.session as ICustomSession).state;
+      if (state) response.redirect(response.locals.authorizationURI);
+      else if (!state && !throwError) this.verifySession(request, response, true);
+      else if (!state && throwError) response.status(424).json({ message: "SESSION_VERIFICATION_FAILED" });
+    });
   }
-
 
   isRedirectUriAllowed(url: string, allowedUris: any) {
     if (allowedUris instanceof String || typeof allowedUris === "string") return minimatch(url, allowedUris as string);
@@ -158,7 +159,7 @@ class OidcConsumer {
   // returns and stores state for a request
   #getSessionState(request) {
     const state = uuidv4();
-    (request.session as unknown as ICustomSession).state = state;
+    (request.session as ICustomSession).state = state;
     return state;
   }
 
@@ -199,14 +200,14 @@ class OidcConsumer {
   async authCallback(request: Request, response: Response, next: NextFunction, queryParams: Object, httpOptions?: WreckHttpOptions) {
     const { code, state } = request.query;
 
-    const sessionState = (request.session as unknown as ICustomSession).state;
+    const sessionState = (request.session as ICustomSession).state;
     if (!sessionState) {
       console.log("Session state not found", request);
       return response.status(424).json({ message: "Unable to locate session" });
     }
     if (state !== sessionState) return response.status(409).json({ message: "Secret Mismatch" });
 
-    const destination = (request.session as unknown as ICustomSession).redirect_uri;
+    const destination = (request.session as ICustomSession).redirect_uri;
 
     if (!destination) return response.status(400).json({ message: "Missing destination" });
 
@@ -224,7 +225,7 @@ class OidcConsumer {
           redirect_uri: this.getCallbackURL(request),
           scope: this.scope,
           ...queryParams, // permits passing additional query-params to the IDP
-        } as unknown as AuthorizationTokenConfig, // simple-oauth2 doesn't permit passing additional params; hence forcing via types
+        } as AuthorizationTokenConfig, // simple-oauth2 doesn't permit passing additional params; hence forcing via types
         httpOptions
       );
 
