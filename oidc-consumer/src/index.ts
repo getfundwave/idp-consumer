@@ -100,7 +100,7 @@ class OidcConsumer {
   async authRedirect(request: Request, response: Response, queryParams?: Object) {
     const { redirectUri: destination } = request.query;
 
-    if (!destination) throw new Error("MISSING_DESTINATION");
+    if (!destination)  next(new Error("MISSING_DESTINATION"));
 
     if (!this.isRedirectUriAllowed(String(destination), this.allowedRedirectURIs)) {
       request.session.destroy((error) => {
@@ -108,10 +108,10 @@ class OidcConsumer {
         console.error(error);
       });
       
-      throw new Error("REDIRECTS_NOT_ALLOWED_TO_THIS_URI");
+      next(new Error("REDIRECTS_NOT_ALLOWED_TO_THIS_URI"));
     }
 
-    (request.session as unknown as ICustomSession).redirect_uri = String(destination);
+    (request.session as ICustomSession).redirect_uri = String(destination);
 
     const state = this.#getSessionState(request);
     const callbackRedirectURI = this.getCallbackURL(request);
@@ -122,10 +122,25 @@ class OidcConsumer {
       state,
       ...(queryParams || {}),
     });
+    response.locals.authorizationURI = authorizationURI;
 
-    request.session.save();
+    request.session.save(async () => {
+      try {
+        this.verifySession(request, response);
+      } catch (error) {
+        console.log("Error occurred while verifying session");
+      }
+    });
+  }
 
-    response.redirect(authorizationURI);
+  verifySession(request: Request, response: Response, throwError: Boolean = false) {
+    delete (request.session as ICustomSession).state;
+    request.session.reload(() => {
+      const state = (request.session as ICustomSession).state;
+      if (state) response.redirect(response.locals.authorizationURI);
+      else if (!state && !throwError) this.verifySession(request, response, true);
+      else if (!state && throwError) response.status(424).json({ message: "SESSION_VERIFICATION_FAILED" });
+    });
   }
 
   isRedirectUriAllowed(url: string, allowedUris: any) {
@@ -145,7 +160,7 @@ class OidcConsumer {
   // returns and stores state for a request
   #getSessionState(request) {
     const state = uuidv4();
-    (request.session as unknown as ICustomSession).state = state;
+    (request.session as ICustomSession).state = state;
     return state;
   }
 
@@ -186,23 +201,23 @@ class OidcConsumer {
   async authCallback(request: Request, response: Response, next: NextFunction, queryParams: Object, httpOptions?: WreckHttpOptions) {
     const { code, state } = request.query;
 
-    const sessionState = (request.session as unknown as ICustomSession).state;
+    const sessionState = (request.session as ICustomSession).state;
     if (!sessionState) {
       console.log("Session state not found", request);
-      throw new Error("SESSION_VERIFICATION_FAILED");
+      next(new Error("SESSION_VERIFICATION_FAILED"));
     }
-    if (state !== sessionState) throw new Error("SECRET_MISMATCH");
+    if (state !== sessionState)  next(new Error("SECRET_MISMATCH"));
 
-    const destination = (request.session as unknown as ICustomSession).redirect_uri;
+    const destination = (request.session as ICustomSession).redirect_uri;
 
-    if (!destination) throw new Error("MISSING_DESTINATION");
+    if (!destination) next(new Error("MISSING_DESTINATION"));
 
     try {
       response.locals.sessionData = request.session;
       if (request.session)
         request.session.destroy((error) => {
           if (!error) return;
-          throw new Error("COULD_NOT_DESTROY_SESSION");
+           next(new Error("COULD_NOT_DESTROY_SESSION"));
         });
 
       const token = await this.#oauth2client.getToken(
@@ -211,7 +226,7 @@ class OidcConsumer {
           redirect_uri: this.getCallbackURL(request),
           scope: this.scope,
           ...queryParams, // permits passing additional query-params to the IDP
-        } as unknown as AuthorizationTokenConfig, // simple-oauth2 doesn't permit passing additional params; hence forcing via types
+        } as AuthorizationTokenConfig, // simple-oauth2 doesn't permit passing additional params; hence forcing via types
         httpOptions
       );
 
@@ -219,7 +234,7 @@ class OidcConsumer {
       next();
     } catch (error) {
       console.log({ error });
-      if (error.message === "Couldn't destroy session") throw new Error("COULD_NOT_DESTROY_SESSION");
+      if (error.message === "Couldn't destroy session") next(new Error("COULD_NOT_DESTROY_SESSION"));
     }
   }
 
