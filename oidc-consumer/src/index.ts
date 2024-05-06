@@ -100,7 +100,7 @@ class OidcConsumer {
   async authRedirect(request: Request, response: Response, queryParams?: Object) {
     const { redirectUri: destination } = request.query;
 
-    if (!destination) throw new Error("Missing destination");
+    if (!destination) throw new Error("MISSING_DESTINATION");
 
     if (!this.isRedirectUriAllowed(String(destination), this.allowedRedirectURIs)) {
       request.session.destroy((error) => {
@@ -108,7 +108,7 @@ class OidcConsumer {
         console.error(error);
       });
       
-      throw new Error("Redirects are not allowed on this URI");
+      throw new Error("REDIRECTS_NOT_ALLOWED_TO_THIS_URI");
     }
 
     (request.session as unknown as ICustomSession).redirect_uri = String(destination);
@@ -191,18 +191,18 @@ class OidcConsumer {
       console.log("Session state not found", request);
       throw new Error("SESSION_VERIFICATION_FAILED");
     }
-    if (state !== sessionState) throw new Error("Secret Mismatch");
+    if (state !== sessionState) throw new Error("SECRET_MISMATCH");
 
     const destination = (request.session as unknown as ICustomSession).redirect_uri;
 
-    if (!destination) throw new Error("Missing destination");
+    if (!destination) throw new Error("MISSING_DESTINATION");
 
     try {
       response.locals.sessionData = request.session;
       if (request.session)
         request.session.destroy((error) => {
           if (!error) return;
-          throw new Error("Couldn't destroy session");
+          throw new Error("COULD_NOT_DESTROY_SESSION");
         });
 
       const token = await this.#oauth2client.getToken(
@@ -219,7 +219,7 @@ class OidcConsumer {
       next();
     } catch (error) {
       console.log({ error });
-      if (error.message === "Couldn't destroy session") throw new Error("Couldn't destroy session");
+      if (error.message === "Couldn't destroy session") throw new Error("COULD_NOT_DESTROY_SESSION");
     }
   }
 
