@@ -100,14 +100,15 @@ class OidcConsumer {
   async authRedirect(request: Request, response: Response, queryParams?: Object) {
     const { redirectUri: destination } = request.query;
 
-    if (!destination) return response.status(400).json({ message: "Missing Callback URL" });
+    if (!destination) throw new Error("Missing destination");
 
     if (!this.isRedirectUriAllowed(String(destination), this.allowedRedirectURIs)) {
       request.session.destroy((error) => {
         if (!error) return;
         console.error(error);
       });
-      return response.status(403).json({ message: "Redirects are not permitted to provided URL" });
+      
+      throw new Error("Redirects are not allowed on this URI");
     }
 
     (request.session as unknown as ICustomSession).redirect_uri = String(destination);
@@ -188,20 +189,20 @@ class OidcConsumer {
     const sessionState = (request.session as unknown as ICustomSession).state;
     if (!sessionState) {
       console.log("Session state not found", request);
-      return response.status(424).json({ message: "Unable to locate session" });
+      throw new Error("SESSION_VERIFICATION_FAILED");
     }
-    if (state !== sessionState) return response.status(409).json({ message: "Secret Mismatch" });
+    if (state !== sessionState) throw new Error("Secret Mismatch");
 
     const destination = (request.session as unknown as ICustomSession).redirect_uri;
 
-    if (!destination) return response.status(400).json({ message: "Missing destination" });
+    if (!destination) throw new Error("Missing destination");
 
     try {
       response.locals.sessionData = request.session;
       if (request.session)
         request.session.destroy((error) => {
           if (!error) return;
-          throw { message: "Couldn't destroy session", payload: error };
+          throw new Error("Couldn't destroy session");
         });
 
       const token = await this.#oauth2client.getToken(
@@ -218,8 +219,7 @@ class OidcConsumer {
       next();
     } catch (error) {
       console.log({ error });
-      if (error.message === "Couldn't destroy session") return response.send(500).json({ message: error.message });
-      return response.sendStatus(500);
+      if (error.message === "Couldn't destroy session") throw new Error("Couldn't destroy session");
     }
   }
 
