@@ -16,7 +16,7 @@ Middlewares and utilities for OIDC
     * [.serve()](#OidcConsumer+serve) ⇒
     * [.authRedirect(request, response, queryParams)](#OidcConsumer+authRedirect) ⇒
     * [.parseCallback()](#OidcConsumer+parseCallback)
-    * [.authCallback(request, response, next, queryParams, [httpOptions])](#OidcConsumer+authCallback)
+    * [.verifySession(request, response, next, queryParams, [httpOptions])](#OidcConsumer+verifySession)
     * [.refresh(token, scope, [httpOptions])](#OidcConsumer+refresh) ⇒
     * [.revoke(token, token_type, [httpOptions])](#OidcConsumer+revoke) ⇒
 
@@ -94,9 +94,9 @@ redirects to authorization-url generated based on provided config
 serves the auth-callback route after initiating an express-session (as a middleware) to store state
 
 **Kind**: instance method of [<code>OidcConsumer</code>](#OidcConsumer)  
-<a name="OidcConsumer+authCallback"></a>
+<a name="OidcConsumer+verifySession"></a>
 
-### oidcConsumer.authCallback(request, response, next, queryParams, [httpOptions])
+### oidcConsumer.verifySession(request, response, next, queryParams, [httpOptions])
 middleware that parses redirection call from the authentication-server, generates tokens for given auth-code and stores in response.headers
 
 **Kind**: instance method of [<code>OidcConsumer</code>](#OidcConsumer)  
