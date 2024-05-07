@@ -189,7 +189,7 @@ class OidcConsumer {
     request.session.reload(() => {
     const state = (request.session as ICustomSession).state;
     if (state) next();
-    else if (!state && !throwError) this.verifySession(request, response, true);
+    else if (!state && !throwError) this.verifySession(request, response, next, true);
     else if (!state && throwError) return next(new Error("SESSION_VERIFICATION_FAILED"));
     });
   }
