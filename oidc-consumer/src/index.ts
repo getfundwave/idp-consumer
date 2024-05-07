@@ -100,7 +100,7 @@ class OidcConsumer {
   async authRedirect(request: Request, response: Response, queryParams?: Object) {
     const { redirectUri: destination } = request.query;
 
-    if (!destination)  next(new Error("MISSING_DESTINATION"));
+    if (!destination)  return next(new Error("MISSING_DESTINATION"));
 
     if (!this.isRedirectUriAllowed(String(destination), this.allowedRedirectURIs)) {
       request.session.destroy((error) => {
@@ -108,7 +108,7 @@ class OidcConsumer {
         console.error(error);
       });
       
-      next(new Error("REDIRECTS_NOT_ALLOWED_TO_THIS_URI"));
+      return next(new Error("REDIRECTS_NOT_ALLOWED_TO_THIS_URI"));
     }
 
     (request.session as ICustomSession).redirect_uri = String(destination);
@@ -189,20 +189,20 @@ class OidcConsumer {
     const sessionState = (request.session as ICustomSession).state;
     if (!sessionState) {
       console.log("Session state not found", request);
-      next(new Error("SESSION_VERIFICATION_FAILED"), request, response, next);
+      return next(new Error("SESSION_VERIFICATION_FAILED"), request);
     }
-    if (state !== sessionState)  next(new Error("SECRET_MISMATCH"));
+    if (state !== sessionState)  return next(new Error("SECRET_MISMATCH"));
 
     const destination = (request.session as ICustomSession).redirect_uri;
 
-    if (!destination) next(new Error("MISSING_DESTINATION"));
+    if (!destination) return next(new Error("MISSING_DESTINATION"));
 
     try {
       response.locals.sessionData = request.session;
       if (request.session)
         request.session.destroy((error) => {
           if (!error) return;
-           next(new Error("COULD_NOT_DESTROY_SESSION"));
+           return next(new Error("COULD_NOT_DESTROY_SESSION"));
         });
 
       const token = await this.#oauth2client.getToken(
@@ -219,7 +219,7 @@ class OidcConsumer {
       next();
     } catch (error) {
       console.log({ error });
-      if (error.message === "COULD_NOT_DESTROY_SESSION") next(new Error("COULD_NOT_DESTROY_SESSION"));
+      if (error.message === "COULD_NOT_DESTROY_SESSION") return next(new Error("COULD_NOT_DESTROY_SESSION"));
     }
   }
 
@@ -242,7 +242,7 @@ class OidcConsumer {
 
       return refreshedToken;
     } catch (error) {
-      next(error);
+      return next(error);
     }
   }
 
@@ -259,7 +259,7 @@ class OidcConsumer {
       if (token_type === "all") await accessToken.revokeAll();
       else await accessToken.revoke(token_type, httpOptions);
     } catch (error) {
-      next(error);
+      return next(error);
     }
   }
 }
