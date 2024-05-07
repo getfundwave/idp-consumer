@@ -97,17 +97,18 @@ class OidcConsumer {
    * @returns void
    * @throws 400 - Missing Callback URL
    */
-  async authRedirect(request: Request, response: Response, queryParams?: Object) {
+  async authRedirect(request: Request, response: Response, next: NextFunction, queryParams?: Object) {
     const { redirectUri: destination } = request.query;
 
-    if (!destination) return response.status(400).json({ message: "Missing Callback URL" });
+    if (!destination)  return next(new Error("MISSING_DESTINATION"));
 
     if (!this.isRedirectUriAllowed(String(destination), this.allowedRedirectURIs)) {
       request.session.destroy((error) => {
         if (!error) return;
         console.error(error);
       });
-      return response.status(403).json({ message: "Redirects are not permitted to provided URL" });
+      
+      return next(new Error("REDIRECTS_NOT_ALLOWED_TO_THIS_URI"));
     }
 
     (request.session as ICustomSession).redirect_uri = String(destination);
@@ -123,13 +124,7 @@ class OidcConsumer {
     });
     response.locals.authorizationURI = authorizationURI;
 
-    request.session.save(async () => {
-      try {
-        this.verifySession(request, response);
-      } catch (error) {
-        console.log("Error occurred while verifying session");
-      }
-    });
+    request.session.save();
   }
 
   isRedirectUriAllowed(url: string, allowedUris: any) {
@@ -189,13 +184,13 @@ class OidcConsumer {
    */
 
 
-  verifySession(request: Request, response: Response, throwError: Boolean = false) {
+  verifySession(request: Request, response: Response, next: NextFunction, throwError: Boolean = false) {
     delete (request.session as ICustomSession).state;
     request.session.reload(() => {
-      const state = (request.session as ICustomSession).state;
-      if (state) response.redirect(response.locals.authorizationURI);
-      else if (!state && !throwError) this.verifySession(request, response, true);
-      else if (!state && throwError) response.status(424).json({ message: "SESSION_VERIFICATION_FAILED" });
+    const state = (request.session as ICustomSession).state;
+    if (state) next();
+    else if (!state && !throwError) this.verifySession(request, response, true);
+    else if (!state && throwError) return next(new Error("SESSION_VERIFICATION_FAILED"));
     });
   }
 
@@ -204,26 +199,21 @@ class OidcConsumer {
 
     const sessionState = (request.session as ICustomSession).state;
     if (!sessionState) {
-      try {
-        this.verifySession(request, response);
-      } catch (error) {
-        console.log("Error occurred while verifying session");
-      }
-      console.log("Session state not found", request);
-      return response.status(424).json({ message: "Unable to locate session" });
+      console.log("Verifying session...")
+      this.verifySession(request, response, next);
     }
-    if (state !== sessionState) return response.status(409).json({ message: "Secret Mismatch" });
+    if (state !== sessionState)  return next(new Error("SECRET_MISMATCH"));
 
     const destination = (request.session as ICustomSession).redirect_uri;
 
-    if (!destination) return response.status(400).json({ message: "Missing destination" });
+    if (!destination) return next(new Error("MISSING_DESTINATION"));
 
     try {
       response.locals.sessionData = request.session;
       if (request.session)
         request.session.destroy((error) => {
           if (!error) return;
-          throw { message: "Couldn't destroy session", payload: error };
+           return next(new Error("COULD_NOT_DESTROY_SESSION"));
         });
 
       const token = await this.#oauth2client.getToken(
@@ -240,8 +230,7 @@ class OidcConsumer {
       next();
     } catch (error) {
       console.log({ error });
-      if (error.message === "Couldn't destroy session") return response.send(500).json({ message: error.message });
-      return response.sendStatus(500);
+      if (error.message === "COULD_NOT_DESTROY_SESSION") return next(new Error("COULD_NOT_DESTROY_SESSION"));
     }
   }
 
@@ -252,7 +241,7 @@ class OidcConsumer {
    * @param [httpOptions] Optional http options passed through the underlying http library while refreshing token
    * @returns refreshedToken
    */
-  async refresh(token: any, scope?: string, httpOptions?: WreckHttpOptions) {
+  async refresh(token: any, next: NextFunction, scope?: string, httpOptions?: WreckHttpOptions) {
     const accessToken = this.#oauth2client.createToken(token);
     try {
       const refreshedToken = await accessToken.refresh(
@@ -264,7 +253,7 @@ class OidcConsumer {
 
       return refreshedToken;
     } catch (error) {
-      throw error;
+      return next(error);
     }
   }
 
@@ -275,13 +264,13 @@ class OidcConsumer {
    * @param [httpOptions] Optional http options passed through the underlying http library while revoking token
    * @returns void
    */
-  async revoke(token: any, token_type: "access_token" | "refresh_token" | "all", httpOptions?: WreckHttpOptions) {
+  async revoke(token: any, token_type: "access_token" | "refresh_token" | "all", next: NextFunction, httpOptions?: WreckHttpOptions) {
     const accessToken = this.#oauth2client.createToken(token);
     try {
       if (token_type === "all") await accessToken.revokeAll();
       else await accessToken.revoke(token_type, httpOptions);
     } catch (error) {
-      throw error;
+      return next(error);
     }
   }
 }
