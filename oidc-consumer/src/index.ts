@@ -132,16 +132,6 @@ class OidcConsumer {
     });
   }
 
-  verifySession(request: Request, response: Response, throwError: Boolean = false) {
-    delete (request.session as ICustomSession).state;
-    request.session.reload(() => {
-      const state = (request.session as ICustomSession).state;
-      if (state) response.redirect(response.locals.authorizationURI);
-      else if (!state && !throwError) this.verifySession(request, response, true);
-      else if (!state && throwError) response.status(424).json({ message: "SESSION_VERIFICATION_FAILED" });
-    });
-  }
-
   isRedirectUriAllowed(url: string, allowedUris: any) {
     if (allowedUris instanceof String || typeof allowedUris === "string") return minimatch(url, allowedUris as string);
     else if (allowedUris instanceof RegExp) return allowedUris.test(url);
@@ -197,11 +187,28 @@ class OidcConsumer {
    * @throws 400 - Missing Destination
    * @throws 500 - Couldn't destroy session
    */
+
+
+  verifySession(request: Request, response: Response, throwError: Boolean = false) {
+    delete (request.session as ICustomSession).state;
+    request.session.reload(() => {
+      const state = (request.session as ICustomSession).state;
+      if (state) response.redirect(response.locals.authorizationURI);
+      else if (!state && !throwError) this.verifySession(request, response, true);
+      else if (!state && throwError) response.status(424).json({ message: "SESSION_VERIFICATION_FAILED" });
+    });
+  }
+
   async authCallback(request: Request, response: Response, next: NextFunction, queryParams: Object, httpOptions?: WreckHttpOptions) {
     const { code, state } = request.query;
 
     const sessionState = (request.session as ICustomSession).state;
     if (!sessionState) {
+      try {
+        this.verifySession(request, response);
+      } catch (error) {
+        console.log("Error occurred while verifying session");
+      }
       console.log("Session state not found", request);
       return response.status(424).json({ message: "Unable to locate session" });
     }
