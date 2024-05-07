@@ -122,9 +122,10 @@ class OidcConsumer {
       state,
       ...(queryParams || {}),
     });
-    response.locals.authorizationURI = authorizationURI;
 
     request.session.save();
+
+    response.redirect(authorizationURI)
   }
 
   isRedirectUriAllowed(url: string, allowedUris: any) {
