@@ -185,7 +185,7 @@ class OidcConsumer {
    */
 
 
-  verifySession(request: Request, response: Response, next: NextFunction, throwError: Boolean = false) {
+  async verifySession(request: Request, response: Response, next: NextFunction, throwError: Boolean = false) {
     delete (request.session as ICustomSession).state;
     request.session.reload(() => {
     const state = (request.session as ICustomSession).state;
@@ -201,11 +201,11 @@ class OidcConsumer {
     const sessionState = (request.session as ICustomSession).state;
     if (!sessionState) {
       console.log("Verifying session...")
-      this.verifySession(request, response, next);
+      await this.verifySession(request, response, next);
     }
     if (state !== sessionState)  return next(new Error("SECRET_MISMATCH"));
 
-    const destination = (request.session as ICustomSession).redirect_uri;
+   const destination = (request.session as ICustomSession).redirect_uri;
 
     if (!destination) return next(new Error("MISSING_DESTINATION"));
 
