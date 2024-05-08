@@ -186,12 +186,23 @@ class OidcConsumer {
 
 
   async verifySession(request: Request, response: Response, next: NextFunction, throwError: Boolean = false) {
+    return new Promise<void>((resolve, reject) => {
     delete (request.session as ICustomSession).state;
     request.session.reload(() => {
     const state = (request.session as ICustomSession).state;
-    if (state) next();
-    else if (!state && !throwError) this.verifySession(request, response, next, true);
-    else if (!state && throwError) return next(new Error("SESSION_VERIFICATION_FAILED"));
+    if (state) {
+      next();
+      resolve();
+    }
+    else if (!state && !throwError) {
+      this.verifySession(request, response, next, true)
+      .then(resolve)
+      .catch(reject);
+    }
+    else if (!state && throwError) {
+      return next(new Error("SESSION_VERIFICATION_FAILED"));
+    }
+    });
     });
   }
 
