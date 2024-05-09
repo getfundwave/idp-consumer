@@ -188,7 +188,7 @@ class OidcConsumer {
   async verifySession(request: Request, response: Response, next: NextFunction, throwError: Boolean = false) {
     await new Promise<void>((resolve, reject) => {
     delete (request.session as ICustomSession).state;
-    request.session.reload(() => {
+    request.session.reload(async () => {
     const state = (request.session as ICustomSession).state;
     if (state) {
       next();
