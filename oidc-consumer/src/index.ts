@@ -187,12 +187,20 @@ class OidcConsumer {
 
   async verifySession(request: Request, response: Response, next: NextFunction, throwError: Boolean = false) {
     delete (request.session as ICustomSession).state;
+    await new Promise<void>((resolve,reject) => {
+      try{
     request.session.reload((err) => {
       if(err) {
         console.log(err);
-        return next(err);
+        next(err);
       }
-      return;
+    });
+      resolve();
+      }
+      catch(err){
+        console.log(err);
+        reject();
+      }
     });
     const state = (request.session as ICustomSession).state;
     if (state) {
