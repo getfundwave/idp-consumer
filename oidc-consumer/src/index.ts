@@ -186,26 +186,25 @@ class OidcConsumer {
 
 
   async verifySession(request: Request, response: Response, next: NextFunction, throwError: Boolean = false) {
-    return new Promise<void>((resolve, reject) => {
     delete (request.session as ICustomSession).state;
-    request.session.reload(async () => {
+    request.session.reload((err) => {
+      if(err) {
+        console.log(err);
+        return next(err);
+      }
+      return;
+    });
     const state = (request.session as ICustomSession).state;
     if (state) {
-      next();
-      return resolve();
+      return next();
     }
     else if (!state && !throwError) {
       await this.verifySession(request, response, next, true)
-      .then(resolve)
-      .catch(reject);
     }
     else if (!state && throwError) {
-      next(new Error("SESSION_VERIFICATION_FAILED"));
-      return resolve();
+      return next(new Error("SESSION_VERIFICATION_FAILED"));
     }
-    });
-    });
-  }
+    };
 
   async authCallback(request: Request, response: Response, next: NextFunction, queryParams: Object, httpOptions?: WreckHttpOptions) {
     const { code, state } = request.query;
@@ -213,7 +212,7 @@ class OidcConsumer {
     const sessionState = (request.session as ICustomSession).state;
     if (!sessionState) {
       console.log("Verifying session...")
-      await this.verifySession(request, response, next);
+      await this.verifySession(request, response, next)
     }
     if (state !== sessionState)  return next(new Error("SECRET_MISMATCH"));
 
