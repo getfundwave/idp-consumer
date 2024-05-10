@@ -86,7 +86,7 @@ class OidcConsumer {
    * @throws 400 - Missing Callback URL
    */
   #defaultAuthRedirect(request: Request, response: Response, _next: NextFunction) {
-    return this.authRedirect(request, response, undefined);
+    return this.authRedirect(request, response, _next, undefined);
   }
 
   /**
@@ -125,7 +125,7 @@ class OidcConsumer {
 
     request.session.save();
 
-    response.redirect(authorizationURI)
+    response.redirect(authorizationURI);
   }
 
   isRedirectUriAllowed(url: string, allowedUris: any) {
@@ -207,7 +207,7 @@ class OidcConsumer {
       return next();
     }
     else if (!state && !throwError) {
-      await this.verifySession(request, response, next, true)
+      await this.verifySession(request, response, next, true);
     }
     else if (!state && throwError) {
       return next(new Error("SESSION_VERIFICATION_FAILED"));
@@ -220,7 +220,7 @@ class OidcConsumer {
     const sessionState = (request.session as ICustomSession).state;
     if (!sessionState) {
       console.log("Verifying session...")
-      await this.verifySession(request, response, next)
+      await this.verifySession(request, response, next);
     }
     if (state !== sessionState)  return next(new Error("SECRET_MISMATCH"));
 
