@@ -1,6 +1,6 @@
 import { Firestore } from '@google-cloud/firestore';
 import { FirestoreStore } from '@google-cloud/connect-firestore';
-import OidcConsumer from "../src/index";
+import OidcConsumer from "../dist/cjs/src/index";
 import * as sinon from 'sinon';
 import { mockReq, mockRes } from 'sinon-express-mock';
 const realm = process.env.REALM || 'default_realm'; 

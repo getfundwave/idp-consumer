@@ -18,7 +18,7 @@
     "build:cjs": "tsc --module commonjs --outDir dist/cjs --declaration false",
     "dev": "tsc --watch",
     "predocs": "npm run build",
-    "docs": "npx jsdoc-to-markdown dist/index.js > DOCUMENTATION.md",
+    "docs": "npx jsdoc-to-markdown dist/src/index.js > DOCUMENTATION.md",
     "prepublish": "npm run docs",
     "test": "jest"
   },
@@ -46,6 +46,7 @@
     "@google-cloud/firestore": "^7.7.0",
     "@types/jest": "^29.5.12",
     "jest": "^29.7.0",
+    "jsdoc-to-markdown": "^8.0.1",
     "sinon": "^17.0.2",
     "sinon-express-mock": "^2.2.1",
     "ts-jest": "^29.1.2",
