@@ -1,6 +1,6 @@
 {
   "name": "@fundwave/oidc-consumer",
-  "version": "1.1.3-fix-unable-to-locate.13",
+  "version": "1.1.3-fix-unable-to-locate.14",
   "description": "OIDC consumer middlewares and utilities",
   "types": "dist/index.d.ts",
   "exports": {
