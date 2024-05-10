@@ -1,6 +1,6 @@
 import { Firestore } from '@google-cloud/firestore';
 import { FirestoreStore } from '@google-cloud/connect-firestore';
-import OidcConsumer from "../dist/cjs/src/index";
+import OidcConsumer from "../dist/cjs/index";
 import * as sinon from 'sinon';
 import { mockReq, mockRes } from 'sinon-express-mock';
 const realm = process.env.REALM || 'default_realm'; 
@@ -39,7 +39,7 @@ const consumer = new OidcConsumer({
 });
 
 describe('Authentication Functions', () => {
-  let firestoreStub: sinon.SinonStub;
+  let firestoreStub=sinon.SinonStub;
 
   beforeEach(() => {
     firestoreStub = sinon.stub(Firestore.prototype, 'collection').returnsThis();
@@ -55,7 +55,7 @@ describe('Authentication Functions', () => {
     it('should call next() if session state is present', async () => {
       const req = mockReq();
       const res = mockRes();
-      req.session = { state: 'dummy state', reload: jest.fn()};
+      req.session = { state: 'dummy state../dist/cjs/src/index', reload: jest.fn()};
 
       const next = sinon.spy();
 

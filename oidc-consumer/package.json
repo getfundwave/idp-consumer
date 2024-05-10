@@ -18,7 +18,7 @@
     "build:cjs": "tsc --module commonjs --outDir dist/cjs --declaration false",
     "dev": "tsc --watch",
     "predocs": "npm run build",
-    "docs": "npx jsdoc-to-markdown dist/src/index.js > DOCUMENTATION.md",
+    "docs": "npx jsdoc-to-markdown dist/index.js > DOCUMENTATION.md",
     "prepublish": "npm run docs",
     "test": "jest"
   },
