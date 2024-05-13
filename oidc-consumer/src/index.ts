@@ -95,7 +95,7 @@ class OidcConsumer {
    * @param response - Express response object
    * @param queryParams - Additional params to be passed in the redirect-url
    * @returns void
-   * @throws 400 - Missing Callback URL
+   * @throws Missing Callback URL
    */
   async authRedirect(request: Request, response: Response, next: NextFunction, queryParams?: Object) {
     const { redirectUri: destination } = request.query;
@@ -108,7 +108,7 @@ class OidcConsumer {
         console.error(error);
       });
       
-      return next(new Error("REDIRECTS_NOT_ALLOWED_TO_THIS_URI"));
+      return next(new Error("DISALLOWED_REDIRECT_URI"));
     }
 
     (request.session as ICustomSession).redirect_uri = String(destination);
@@ -162,10 +162,9 @@ class OidcConsumer {
    * @param response - Express response object
    * @param next - Express next object
    * @returns authCallback utility
-   * @throws 424 - Session State not found
-   * @throws 409 - Secret Mismatch
-   * @throws 400 - Missing Destination
-   * @throws 500 - Couldn't destroy session
+   * @throws Secret Mismatch
+   * @throws Missing Destination
+   * @throws Couldn't destroy session
    */
   #defaultAuthCallback(request: Request, response: Response, next: NextFunction) {
     return this.authCallback(request, response, next, undefined, undefined);
@@ -178,41 +177,10 @@ class OidcConsumer {
    * @param next - Express next object
    * @param queryParams - Additional params to be passed in the redirect-url
    * @param [httpOptions] Optional http options passed through the underlying http library for auth-code and token exchange
-   * @throws 424 - Session State not found
-   * @throws 409 - Secret Mismatch
-   * @throws 400 - Missing Destination
-   * @throws 500 - Couldn't destroy session
+   * @throws Secret Mismatch
+   * @throws Missing Destination
+   * @throws Couldn't destroy session
    */
-
-
-  async verifySession(request: Request, response: Response, next: NextFunction, throwError: Boolean = false) {
-    delete (request.session as ICustomSession).state;
-    await new Promise<void>((resolve,reject) => {
-      try{
-    request.session.reload((err) => {
-      if(err) {
-        console.log(err);
-        next(err);
-      }
-    });
-      resolve();
-      }
-      catch(err){
-        console.log(err);
-        reject();
-      }
-    });
-    const state = (request.session as ICustomSession).state;
-    if (state) {
-      return next();
-    }
-    else if (!state && !throwError) {
-      await this.verifySession(request, response, next, true);
-    }
-    else if (!state && throwError) {
-      return next(new Error("SESSION_VERIFICATION_FAILED"));
-    }
-    };
 
   async authCallback(request: Request, response: Response, next: NextFunction, queryParams: Object, httpOptions?: WreckHttpOptions) {
     const { code, state } = request.query;
@@ -233,7 +201,7 @@ class OidcConsumer {
       if (request.session)
         request.session.destroy((error) => {
           if (!error) return;
-           return next(new Error("COULD_NOT_DESTROY_SESSION"));
+           return next(new Error("FAILURE_DESTROYING_SESSION"));
         });
 
       const token = await this.#oauth2client.getToken(
@@ -250,7 +218,7 @@ class OidcConsumer {
       next();
     } catch (error) {
       console.log({ error });
-      if (error.message === "COULD_NOT_DESTROY_SESSION") return next(new Error("COULD_NOT_DESTROY_SESSION"));
+      if (error.message === "FAILURE_DESTROYING_SESSION") return next(new Error("FAILURE_DESTROYING_SESSION"));
     }
   }
 
@@ -261,7 +229,7 @@ class OidcConsumer {
    * @param [httpOptions] Optional http options passed through the underlying http library while refreshing token
    * @returns refreshedToken
    */
-  async refresh(token: any, next: NextFunction, scope?: string, httpOptions?: WreckHttpOptions) {
+  async refresh(token: any, scope?: string, httpOptions?: WreckHttpOptions) {
     const accessToken = this.#oauth2client.createToken(token);
     try {
       const refreshedToken = await accessToken.refresh(
@@ -273,9 +241,39 @@ class OidcConsumer {
 
       return refreshedToken;
     } catch (error) {
-      return next(error);
+      throw error;
     }
   }
+
+  /**
+   * verify session is stored successfully in the store and is queryable
+   * @param request - Express request object
+   * @param response - Express response object
+   * @param next - Express next object
+   * @param throwError - Flag to throw error if found or recursively call itself
+   * @throws SESSION_VERIFICATION_FAILED if session verification fails.
+   */ 
+  async verifySession(request: Request, response: Response, next: NextFunction, throwError: Boolean = false) {
+    await new Promise<void>((resolve,reject) => {
+    request.session.reload((err) => {
+      if(err) {
+        console.log(err);
+        next(err);
+      }
+    });
+      resolve();
+    });
+    const state = (request.session as ICustomSession).state;
+    if (state) {
+      return next();
+    }
+    else if (!state && !throwError) {
+      await this.verifySession(request, response, next, true);
+    }
+    else if (!state && throwError) {
+      return next(new Error("SESSION_VERIFICATION_FAILED"));
+    }
+    };
 
   /**
    * revokes a given token for a given type
@@ -284,13 +282,13 @@ class OidcConsumer {
    * @param [httpOptions] Optional http options passed through the underlying http library while revoking token
    * @returns void
    */
-  async revoke(token: any, token_type: "access_token" | "refresh_token" | "all", next: NextFunction, httpOptions?: WreckHttpOptions) {
+  async revoke(token: any, token_type: "access_token" | "refresh_token" | "all", httpOptions?: WreckHttpOptions) {
     const accessToken = this.#oauth2client.createToken(token);
     try {
       if (token_type === "all") await accessToken.revokeAll();
       else await accessToken.revoke(token_type, httpOptions);
     } catch (error) {
-      return next(error);
+      throw error;
     }
   }
 }

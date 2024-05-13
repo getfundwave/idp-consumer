@@ -1,8 +1,8 @@
 import { Firestore } from '@google-cloud/firestore';
-import { FirestoreStore } from '@google-cloud/connect-firestore';
 import OidcConsumer from "../dist/cjs/index";
 import * as sinon from 'sinon';
 import { mockReq, mockRes } from 'sinon-express-mock';
+import { MemoryStore } from 'express-session';
 const realm = process.env.REALM || 'default_realm'; 
 
 const allowedOrigins: string[] = (process.env.ALLOWED_ORIGINS?.split(",") || []);
@@ -28,10 +28,7 @@ const consumer = new OidcConsumer({
         },
     },
     sessionOptions: {
-        store: new FirestoreStore({
-            dataset: new Firestore(),
-            kind: 'test',
-        }),
+        store: new MemoryStore(),
         secret: process.env.SESSION_SECRET || 'your-session-secret', 
         resave: false,
         saveUninitialized: false,
@@ -80,9 +77,7 @@ describe('Authentication Functions', () => {
 
   describe('authCallback', () => {
     it('should call next() if state matches session state', async () => {
-      const req = mockReq({
-        query: { code: 'dummy_code', state: 'dummy_state' },
-      });
+      const req = mockReq();
       const res = mockRes();
       req.session = { state: 'dummy_state' };
 
