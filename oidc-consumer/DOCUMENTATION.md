@@ -16,8 +16,9 @@ Middlewares and utilities for OIDC
     * [.serve()](#OidcConsumer+serve) ⇒
     * [.authRedirect(request, response, queryParams)](#OidcConsumer+authRedirect) ⇒
     * [.parseCallback()](#OidcConsumer+parseCallback)
-    * [.verifySession(request, response, next, queryParams, [httpOptions])](#OidcConsumer+verifySession)
+    * [.authCallback(request, response, next, queryParams, [httpOptions])](#OidcConsumer+authCallback)
     * [.refresh(token, scope, [httpOptions])](#OidcConsumer+refresh) ⇒
+    * [.verifySession(request, response, next, throwError)](#OidcConsumer+verifySession)
     * [.revoke(token, token_type, [httpOptions])](#OidcConsumer+revoke) ⇒
 
 <a name="OidcConsumer+scope"></a>
@@ -79,7 +80,7 @@ redirects to authorization-url generated based on provided config
 **Returns**: void  
 **Throws**:
 
-- 400 - Missing Callback URL
+- Missing Callback URL
 
 
 | Param | Description |
@@ -94,18 +95,17 @@ redirects to authorization-url generated based on provided config
 serves the auth-callback route after initiating an express-session (as a middleware) to store state
 
 **Kind**: instance method of [<code>OidcConsumer</code>](#OidcConsumer)  
-<a name="OidcConsumer+verifySession"></a>
+<a name="OidcConsumer+authCallback"></a>
 
-### oidcConsumer.verifySession(request, response, next, queryParams, [httpOptions])
+### oidcConsumer.authCallback(request, response, next, queryParams, [httpOptions])
 middleware that parses redirection call from the authentication-server, generates tokens for given auth-code and stores in response.headers
 
 **Kind**: instance method of [<code>OidcConsumer</code>](#OidcConsumer)  
 **Throws**:
 
-- 424 - Session State not found
-- 409 - Secret Mismatch
-- 400 - Missing Destination
-- 500 - Couldn't destroy session
+- Secret Mismatch
+- Missing Destination
+- Couldn't destroy session
 
 
 | Param | Description |
@@ -129,6 +129,24 @@ refresh stale or expired tokens based on a given scope
 | token | stale or expired token that needs to be refreshed |
 | scope | scope for issuing the refreshed tokens (default scope is considered if one isn't passed here) |
 | [httpOptions] | Optional http options passed through the underlying http library while refreshing token |
+
+<a name="OidcConsumer+verifySession"></a>
+
+### oidcConsumer.verifySession(request, response, next, throwError)
+verify session is stored successfully in the store and is queryable
+
+**Kind**: instance method of [<code>OidcConsumer</code>](#OidcConsumer)  
+**Throws**:
+
+- SESSION_VERIFICATION_FAILED if session verification fails.
+
+
+| Param | Default | Description |
+| --- | --- | --- |
+| request |  | Express request object |
+| response |  | Express response object |
+| next |  | Express next object |
+| throwError | <code>false</code> | Flag to throw error if found or recursively call itself |
 
 <a name="OidcConsumer+revoke"></a>
 
