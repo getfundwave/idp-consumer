@@ -87,7 +87,8 @@ redirects to authorization-url generated based on provided config
 **Returns**: void  
 **Throws**:
 
-- Missing Callback URL
+- MISSING_DESTINATION
+- DISALLOWED_REDIRECT_URI
 
 
 | Param | Description |
@@ -110,9 +111,9 @@ middleware that parses redirection call from the authentication-server, generate
 **Kind**: instance method of [<code>OidcConsumer</code>](#OidcConsumer)  
 **Throws**:
 
-- Secret Mismatch
-- Missing Destination
-- Couldn't destroy session
+- SECRET_MISMATCH
+- MISSING_DESTINATION
+- FAILURE_DESTROYING_SESSION
 
 
 | Param | Description |
