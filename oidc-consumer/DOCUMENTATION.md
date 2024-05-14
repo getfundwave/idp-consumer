@@ -7,6 +7,7 @@ Middlewares and utilities for OIDC
 
 * [OidcConsumer](#OidcConsumer)
     * [.scope](#OidcConsumer+scope)
+    * [.timeout](#OidcConsumer+timeout)
     * [.callback_route](#OidcConsumer+callback_route)
     * [.callback_url](#OidcConsumer+callback_url)
     * [.allowedRedirectURIs](#OidcConsumer+allowedRedirectURIs)
@@ -25,6 +26,12 @@ Middlewares and utilities for OIDC
 
 ### oidcConsumer.scope
 scope in which the tokens are issued
+
+**Kind**: instance property of [<code>OidcConsumer</code>](#OidcConsumer)  
+<a name="OidcConsumer+timeout"></a>
+
+### oidcConsumer.timeout
+timeout dictates how long to wait when verifying session
 
 **Kind**: instance property of [<code>OidcConsumer</code>](#OidcConsumer)  
 <a name="OidcConsumer+callback_route"></a>
