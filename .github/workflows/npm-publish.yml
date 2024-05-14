@@ -68,6 +68,10 @@ jobs:
         working-directory: ./${{ matrix.package }}
         run: npm ci
 
+      - name: run tests
+        working-directory: ./${{ matrix.package }}
+        run: npm run test
+
       - name: Release
         env:
           VERSION: ${{ steps.version.outputs.newTag }}
