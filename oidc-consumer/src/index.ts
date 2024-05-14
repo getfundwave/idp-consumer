@@ -12,7 +12,7 @@ import { minimatch } from "minimatch";
  */
 class OidcConsumer {
   scope: string;
-
+  timeout: number;
   callback_route?: string;
   callback_url?: string;
   allowedRedirectURIs: Array<RegExp | string>;
@@ -29,6 +29,11 @@ class OidcConsumer {
      * scope in which the tokens are issued
      */
     this.scope = options?.scope || "";
+
+    /**
+    * timeout dictates how long to wait when verifying session
+    */
+    this.timeout = options?.timeout || 500;
 
     /**
      * route (internal) on server where idp would redirect to (optional)
@@ -254,21 +259,31 @@ class OidcConsumer {
    * @throws SESSION_VERIFICATION_FAILED if session verification fails.
    */ 
   async verifySession(request: Request, response: Response, next: NextFunction, throwError: Boolean = false) {
-    await new Promise<void>((resolve,reject) => {
+    await new Promise<void>(resolve => {
     request.session.reload((err) => {
       if(err) {
         console.log(err);
-        next(err);
       }
     });
       resolve();
+    }).catch((error) => {
+      console.log(error);
+      console.log("error loading session from store")
     });
     const state = (request.session as ICustomSession).state;
     if (state) {
       return next();
     }
     else if (!state && !throwError) {
+      await new Promise<void>(resolve => {
+      setTimeout(async () => {
       await this.verifySession(request, response, next, true);
+      resolve();
+      }, this.timeout );
+      }).catch((error) => {
+        console.log(error);
+        console.log("error in retry")
+      });
     }
     else if (!state && throwError) {
       return next(new Error("SESSION_VERIFICATION_FAILED"));
