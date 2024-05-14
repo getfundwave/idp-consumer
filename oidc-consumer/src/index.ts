@@ -88,7 +88,8 @@ class OidcConsumer {
    * @param response - Express response object
    * @param next - Express next object
    * @returns authCallback utility
-   * @throws 400 - Missing Callback URL
+   * @throws MISSING_DESTINATION
+   * @throws DISALLOWED_REDIRECT_URI
    */
   #defaultAuthRedirect(request: Request, response: Response, _next: NextFunction) {
     return this.authRedirect(request, response, _next, undefined);
@@ -100,7 +101,8 @@ class OidcConsumer {
    * @param response - Express response object
    * @param queryParams - Additional params to be passed in the redirect-url
    * @returns void
-   * @throws Missing Callback URL
+   * @throws MISSING_DESTINATION
+   * @throws DISALLOWED_REDIRECT_URI
    */
   async authRedirect(request: Request, response: Response, next: NextFunction, queryParams?: Object) {
     const { redirectUri: destination } = request.query;
@@ -167,9 +169,9 @@ class OidcConsumer {
    * @param response - Express response object
    * @param next - Express next object
    * @returns authCallback utility
-   * @throws Secret Mismatch
-   * @throws Missing Destination
-   * @throws Couldn't destroy session
+   * @throws SECRET_MISMATCH
+   * @throws MISSING_DESTINATION
+   * @throws FAILURE_DESTROYING_SESSION
    */
   #defaultAuthCallback(request: Request, response: Response, next: NextFunction) {
     return this.authCallback(request, response, next, undefined, undefined);
@@ -182,9 +184,9 @@ class OidcConsumer {
    * @param next - Express next object
    * @param queryParams - Additional params to be passed in the redirect-url
    * @param [httpOptions] Optional http options passed through the underlying http library for auth-code and token exchange
-   * @throws Secret Mismatch
-   * @throws Missing Destination
-   * @throws Couldn't destroy session
+   * @throws SECRET_MISMATCH
+   * @throws MISSING_DESTINATION
+   * @throws FAILURE_DESTROYING_SESSION
    */
 
   async authCallback(request: Request, response: Response, next: NextFunction, queryParams: Object, httpOptions?: WreckHttpOptions) {

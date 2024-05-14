@@ -36,17 +36,6 @@ const consumer = new OidcConsumer({
 });
 
 describe('Authentication Functions', () => {
-  let firestoreStub=sinon.SinonStub;
-
-  beforeEach(() => {
-    firestoreStub = sinon.stub(Firestore.prototype, 'collection').returnsThis();
-    firestoreStub.doc = sinon.stub().returnsThis();
-    firestoreStub.get = sinon.stub();
-  });
-
-  afterEach(() => {
-    firestoreStub.restore();
-  });
 
   describe('verifySession', () => {
     it('should call next() if session state is present', async () => {
