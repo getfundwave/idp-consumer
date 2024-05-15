@@ -31,8 +31,8 @@ class OidcConsumer {
     this.scope = options?.scope || "";
 
     /**
-    * timeout dictates how long to wait when verifying session
-    */
+     * timeout dictates how long to wait when verifying session
+     */
     this.timeout = options?.timeout || 500;
 
     /**
@@ -114,7 +114,7 @@ class OidcConsumer {
         if (!error) return;
         console.error(error);
       });
-      
+
       return next(new Error("DISALLOWED_REDIRECT_URI"));
     }
 
@@ -130,9 +130,12 @@ class OidcConsumer {
       ...(queryParams || {}),
     });
 
-    request.session.save();
+    request.session.save(async () => {
+      console.log("new change in effect")
+      await this.verifySession(request, response, next, false, 0);
+      response.redirect(authorizationURI);
+    });
 
-    response.redirect(authorizationURI);
   }
 
   isRedirectUriAllowed(url: string, allowedUris: any) {
@@ -142,14 +145,14 @@ class OidcConsumer {
       for (const allowedOrigin of allowedUris) {
         if (this.isRedirectUriAllowed(url, allowedOrigin)) return true;
       }
-    else return false;
+      else return false;
   }
 
   getCallbackURL(request: Request) {
     return this.callback_url || `https://${request.headers.host}${this.callback_route || `${request.baseUrl}/callback`}`; // parse and assign callback route
   }
 
-  // returns and stores state for a request
+    // returns and stores state for a request
   #getSessionState(request) {
     const state = uuidv4();
     (request.session as ICustomSession).state = state;
@@ -199,7 +202,7 @@ class OidcConsumer {
     }
     if (state !== sessionState)  return next(new Error("SECRET_MISMATCH"));
 
-   const destination = (request.session as ICustomSession).redirect_uri;
+    const destination = (request.session as ICustomSession).redirect_uri;
 
     if (!destination) return next(new Error("MISSING_DESTINATION"));
 
@@ -208,21 +211,21 @@ class OidcConsumer {
       if (request.session)
         request.session.destroy((error) => {
           if (!error) return;
-           return next(new Error("FAILURE_DESTROYING_SESSION"));
+          return next(new Error("FAILURE_DESTROYING_SESSION"));
         });
 
-      const token = await this.#oauth2client.getToken(
-        {
-          code: code as string,
-          redirect_uri: this.getCallbackURL(request),
-          scope: this.scope,
-          ...queryParams, // permits passing additional query-params to the IDP
-        } as AuthorizationTokenConfig, // simple-oauth2 doesn't permit passing additional params; hence forcing via types
-        httpOptions
-      );
+        const token = await this.#oauth2client.getToken(
+          {
+            code: code as string,
+            redirect_uri: this.getCallbackURL(request),
+            scope: this.scope,
+            ...queryParams, // permits passing additional query-params to the IDP
+          } as AuthorizationTokenConfig, // simple-oauth2 doesn't permit passing additional params; hence forcing via types
+          httpOptions
+        );
 
-      response.locals.token = token;
-      next();
+        response.locals.token = token;
+        next();
     } catch (error) {
       console.log({ error });
       if (error.message === "FAILURE_DESTROYING_SESSION") return next(new Error("FAILURE_DESTROYING_SESSION"));
@@ -260,13 +263,13 @@ class OidcConsumer {
    * @param throwError - Flag to throw error if found or recursively call itself
    * @throws SESSION_VERIFICATION_FAILED if session verification fails.
    */ 
-  async verifySession(request: Request, response: Response, next: NextFunction, throwError: Boolean = false) {
+  async verifySession(request: Request, response: Response, next: NextFunction, throwError: Boolean = false, timeout: number = this.timeout) {
     await new Promise<void>(resolve => {
-    request.session.reload((err) => {
-      if(err) {
-        console.log(err);
-      }
-    });
+      request.session.reload((err) => {
+        if(err) {
+          console.log(err);
+        }
+      });
       resolve();
     }).catch((error) => {
       console.log(error);
@@ -278,10 +281,10 @@ class OidcConsumer {
     }
     else if (!state && !throwError) {
       await new Promise<void>(resolve => {
-      setTimeout(async () => {
-      await this.verifySession(request, response, next, true);
-      resolve();
-      }, this.timeout );
+        setTimeout(async () => {
+          await this.verifySession(request, response, next, true);
+          resolve();
+        }, timeout );
       }).catch((error) => {
         console.log(error);
         console.log("error in retry")
@@ -290,7 +293,7 @@ class OidcConsumer {
     else if (!state && throwError) {
       return next(new Error("SESSION_VERIFICATION_FAILED"));
     }
-    };
+  };
 
   /**
    * revokes a given token for a given type

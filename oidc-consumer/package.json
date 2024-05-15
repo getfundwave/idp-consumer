@@ -43,7 +43,6 @@
     "@types/express": "^4.17.14"
   },
   "devDependencies": {
-    "@google-cloud/firestore": "^7.7.0",
     "@types/jest": "^29.5.12",
     "jest": "^29.7.0",
     "jsdoc-to-markdown": "^8.0.1",
