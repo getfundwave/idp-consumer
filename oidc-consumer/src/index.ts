@@ -92,7 +92,7 @@ class OidcConsumer {
    * @throws DISALLOWED_REDIRECT_URI
    */
   #defaultAuthRedirect(request: Request, response: Response, _next: NextFunction) {
-    return this.authRedirect(request, response, _next, undefined);
+    return this.authRedirect(request, response, undefined);
   }
 
   /**

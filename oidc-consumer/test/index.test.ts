@@ -1,4 +1,3 @@
-import { Firestore } from '@google-cloud/firestore';
 import OidcConsumer from "../dist/cjs/index";
 import * as sinon from 'sinon';
 import { mockReq, mockRes } from 'sinon-express-mock';
