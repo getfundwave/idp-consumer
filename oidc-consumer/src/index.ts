@@ -12,7 +12,7 @@ import { minimatch } from "minimatch";
  */
 class OidcConsumer {
   scope: string;
-  timeout: number;
+  sessionRetryDelayMS: number;
   callback_route?: string;
   callback_url?: string;
   allowedRedirectURIs: Array<RegExp | string>;
@@ -31,9 +31,9 @@ class OidcConsumer {
     this.scope = options?.scope || "";
 
     /**
-     * timeout dictates how long to wait when verifying session
+     * sessionRetryDelayMS dictates how long to wait when verifying session
      */
-    this.timeout = options?.timeout || 500;
+    this.sessionRetryDelayMS = options?.sessionRetryDelayMS || 500;
 
     /**
      * route (internal) on server where idp would redirect to (optional)
@@ -131,7 +131,7 @@ class OidcConsumer {
     });
 
     request.session.save(async () => {
-      await this.verifySession(request, response, next, false, 0);
+      await this.verifySession(request, response, next, false);
       response.redirect(authorizationURI);
     });
 
@@ -259,10 +259,10 @@ class OidcConsumer {
    * @param request - Express request object
    * @param response - Express response object
    * @param next - Express next object
-   * @param throwError - Flag to throw error if found or recursively call itself
+   * @param retryOnFailure - Flag to throw error if found or recursively call itself
    * @throws SESSION_VERIFICATION_FAILED if session verification fails.
    */ 
-  async verifySession(request: Request, response: Response, next: NextFunction, throwError: Boolean = false, timeout: number = this.timeout) {
+  async verifySession(request: Request, response: Response, next: NextFunction, retryOnFailure: Boolean = true, sessionRetryDelayMS: number = this.timeout) {
     await new Promise<void>(resolve => {
       request.session.reload((err) => {
         if(err) {
@@ -278,18 +278,18 @@ class OidcConsumer {
     if (state) {
       return next();
     }
-    else if (!state && !throwError) {
+    else if (!state && retryOnFailure) {
       await new Promise<void>(resolve => {
         setTimeout(async () => {
-          await this.verifySession(request, response, next, true);
+          await this.verifySession(request, response, next, false);
           resolve();
-        }, timeout );
+        }, sessionRetryDelayMS );
       }).catch((error) => {
         console.log(error);
         console.log("error in retry")
       });
     }
-    else if (!state && throwError) {
+    else if (!state && !retryOnFailure) {
       return next(new Error("SESSION_VERIFICATION_FAILED"));
     }
   };
