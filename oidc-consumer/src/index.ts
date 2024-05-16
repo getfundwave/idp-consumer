@@ -131,7 +131,6 @@ class OidcConsumer {
     });
 
     request.session.save(async () => {
-      console.log("new change in effect")
       await this.verifySession(request, response, next, false, 0);
       response.redirect(authorizationURI);
     });
