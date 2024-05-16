@@ -31,7 +31,6 @@
   "author": "fundwave-authors",
   "license": "MIT",
   "dependencies": {
-    "@google-cloud/connect-firestore": "^3.0.0",
     "@types/express-session": "^1.17.5",
     "@types/simple-oauth2": "^5.0.4",
     "express-session": "^1.17.3",

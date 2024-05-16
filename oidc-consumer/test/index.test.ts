@@ -4,7 +4,6 @@ import { mockReq, mockRes } from 'sinon-express-mock';
 import { MemoryStore } from 'express-session';
 const realm = process.env.REALM || 'default_realm'; 
 
-const allowedOrigins: string[] = (process.env.ALLOWED_ORIGINS?.split(",") || []);
 const allowedRedirectURIs: string[] = (process.env.ALLOWED_REDIRECT_URIS?.split(",") || []);
 
 const consumer = new OidcConsumer({
