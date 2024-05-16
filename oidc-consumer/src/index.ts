@@ -12,7 +12,7 @@ import { minimatch } from "minimatch";
  */
 class OidcConsumer {
   scope: string;
-  sessionRetryDelayMS: number;
+
   callback_route?: string;
   callback_url?: string;
   allowedRedirectURIs: Array<RegExp | string>;
@@ -29,11 +29,6 @@ class OidcConsumer {
      * scope in which the tokens are issued
      */
     this.scope = options?.scope || "";
-
-    /**
-     * sessionRetryDelayMS dictates how long to wait when verifying session
-     */
-    this.sessionRetryDelayMS = options?.sessionRetryDelayMS || 500;
 
     /**
      * route (internal) on server where idp would redirect to (optional)
@@ -88,8 +83,7 @@ class OidcConsumer {
    * @param response - Express response object
    * @param next - Express next object
    * @returns authCallback utility
-   * @throws MISSING_DESTINATION
-   * @throws DISALLOWED_REDIRECT_URI
+   * @throws 400 - Missing Callback URL
    */
   #defaultAuthRedirect(request: Request, response: Response, _next: NextFunction) {
     return this.authRedirect(request, response, undefined);
@@ -101,24 +95,22 @@ class OidcConsumer {
    * @param response - Express response object
    * @param queryParams - Additional params to be passed in the redirect-url
    * @returns void
-   * @throws MISSING_DESTINATION
-   * @throws DISALLOWED_REDIRECT_URI
+   * @throws 400 - Missing Callback URL
    */
-  async authRedirect(request: Request, response: Response, next: NextFunction, queryParams?: Object) {
+  async authRedirect(request: Request, response: Response, queryParams?: Object) {
     const { redirectUri: destination } = request.query;
 
-    if (!destination)  return next(new Error("MISSING_DESTINATION"));
+    if (!destination) return response.status(400).json({ message: "Missing Callback URL" });
 
     if (!this.isRedirectUriAllowed(String(destination), this.allowedRedirectURIs)) {
       request.session.destroy((error) => {
         if (!error) return;
         console.error(error);
       });
-
-      return next(new Error("DISALLOWED_REDIRECT_URI"));
+      return response.status(403).json({ message: "Redirects are not permitted to provided URL" });
     }
 
-    (request.session as ICustomSession).redirect_uri = String(destination);
+    (request.session as unknown as ICustomSession).redirect_uri = String(destination);
 
     const state = this.#getSessionState(request);
     const callbackRedirectURI = this.getCallbackURL(request);
@@ -130,11 +122,9 @@ class OidcConsumer {
       ...(queryParams || {}),
     });
 
-    request.session.save(async () => {
-      await this.verifySession(request, response, next, false);
-      response.redirect(authorizationURI);
-    });
+    request.session.save();
 
+    response.redirect(authorizationURI);
   }
 
   isRedirectUriAllowed(url: string, allowedUris: any) {
@@ -154,7 +144,7 @@ class OidcConsumer {
   // returns and stores state for a request
   #getSessionState(request) {
     const state = uuidv4();
-    (request.session as ICustomSession).state = state;
+    (request.session as unknown as ICustomSession).state = state;
     return state;
   }
 
@@ -171,9 +161,10 @@ class OidcConsumer {
    * @param response - Express response object
    * @param next - Express next object
    * @returns authCallback utility
-   * @throws SECRET_MISMATCH
-   * @throws MISSING_DESTINATION
-   * @throws FAILURE_DESTROYING_SESSION
+   * @throws 424 - Session State not found
+   * @throws 409 - Secret Mismatch
+   * @throws 400 - Missing Destination
+   * @throws 500 - Couldn't destroy session
    */
   #defaultAuthCallback(request: Request, response: Response, next: NextFunction) {
     return this.authCallback(request, response, next, undefined, undefined);
@@ -186,31 +177,31 @@ class OidcConsumer {
    * @param next - Express next object
    * @param queryParams - Additional params to be passed in the redirect-url
    * @param [httpOptions] Optional http options passed through the underlying http library for auth-code and token exchange
-   * @throws SECRET_MISMATCH
-   * @throws MISSING_DESTINATION
-   * @throws FAILURE_DESTROYING_SESSION
+   * @throws 424 - Session State not found
+   * @throws 409 - Secret Mismatch
+   * @throws 400 - Missing Destination
+   * @throws 500 - Couldn't destroy session
    */
-
   async authCallback(request: Request, response: Response, next: NextFunction, queryParams: Object, httpOptions?: WreckHttpOptions) {
     const { code, state } = request.query;
 
-    const sessionState = (request.session as ICustomSession).state;
+    const sessionState = (request.session as unknown as ICustomSession).state;
     if (!sessionState) {
-      console.log("Verifying session...")
-      await this.verifySession(request, response, next);
+      console.log("Session state not found", request);
+      return response.status(424).json({ message: "Unable to locate session" });
     }
-    if (state !== sessionState)  return next(new Error("SECRET_MISMATCH"));
+    if (state !== sessionState) return response.status(409).json({ message: "Secret Mismatch" });
 
-    const destination = (request.session as ICustomSession).redirect_uri;
+    const destination = (request.session as unknown as ICustomSession).redirect_uri;
 
-    if (!destination) return next(new Error("MISSING_DESTINATION"));
+    if (!destination) return response.status(400).json({ message: "Missing destination" });
 
     try {
       response.locals.sessionData = request.session;
       if (request.session)
         request.session.destroy((error) => {
           if (!error) return;
-          return next(new Error("FAILURE_DESTROYING_SESSION"));
+          throw { message: "Couldn't destroy session", payload: error };
         });
 
       const token = await this.#oauth2client.getToken(
@@ -219,7 +210,7 @@ class OidcConsumer {
           redirect_uri: this.getCallbackURL(request),
           scope: this.scope,
           ...queryParams, // permits passing additional query-params to the IDP
-        } as AuthorizationTokenConfig, // simple-oauth2 doesn't permit passing additional params; hence forcing via types
+        } as unknown as AuthorizationTokenConfig, // simple-oauth2 doesn't permit passing additional params; hence forcing via types
         httpOptions
       );
 
@@ -227,7 +218,8 @@ class OidcConsumer {
       next();
     } catch (error) {
       console.log({ error });
-      if (error.message === "FAILURE_DESTROYING_SESSION") return next(new Error("FAILURE_DESTROYING_SESSION"));
+      if (error.message === "Couldn't destroy session") return response.send(500).json({ message: error.message });
+      return response.sendStatus(500);
     }
   }
 
@@ -253,46 +245,6 @@ class OidcConsumer {
       throw error;
     }
   }
-
-  /**
-   * verify session is stored successfully in the store and is queryable
-   * @param request - Express request object
-   * @param response - Express response object
-   * @param next - Express next object
-   * @param retryOnFailure - Flag to throw error if found or recursively call itself
-   * @throws SESSION_VERIFICATION_FAILED if session verification fails.
-   */ 
-  async verifySession(request: Request, response: Response, next: NextFunction, retryOnFailure: Boolean = true, sessionRetryDelayMS: number = this.sessionRetryDelayMS) {
-    await new Promise<void>(resolve => {
-      request.session.reload((err) => {
-        if(err) {
-          console.log(err);
-        }
-      });
-      resolve();
-    }).catch((error) => {
-      console.log(error);
-      console.log("error loading session from store")
-    });
-    const state = (request.session as ICustomSession).state;
-    if (state) {
-      return next();
-    }
-    else if (!state && retryOnFailure) {
-      await new Promise<void>(resolve => {
-        setTimeout(async () => {
-          await this.verifySession(request, response, next, false);
-          resolve();
-        }, sessionRetryDelayMS );
-      }).catch((error) => {
-        console.log(error);
-        console.log("error in retry")
-      });
-    }
-    else {
-      return next(new Error("SESSION_VERIFICATION_FAILED"));
-    }
-  };
 
   /**
    * revokes a given token for a given type
