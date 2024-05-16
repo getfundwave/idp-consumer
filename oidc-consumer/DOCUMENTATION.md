@@ -7,7 +7,7 @@ Middlewares and utilities for OIDC
 
 * [OidcConsumer](#OidcConsumer)
     * [.scope](#OidcConsumer+scope)
-    * [.timeout](#OidcConsumer+timeout)
+    * [.sessionRetryDelayMS](#OidcConsumer+sessionRetryDelayMS)
     * [.callback_route](#OidcConsumer+callback_route)
     * [.callback_url](#OidcConsumer+callback_url)
     * [.allowedRedirectURIs](#OidcConsumer+allowedRedirectURIs)
@@ -19,7 +19,7 @@ Middlewares and utilities for OIDC
     * [.parseCallback()](#OidcConsumer+parseCallback)
     * [.authCallback(request, response, next, queryParams, [httpOptions])](#OidcConsumer+authCallback)
     * [.refresh(token, scope, [httpOptions])](#OidcConsumer+refresh) ⇒
-    * [.verifySession(request, response, next, throwError)](#OidcConsumer+verifySession)
+    * [.verifySession(request, response, next, retryOnFailure)](#OidcConsumer+verifySession)
     * [.revoke(token, token_type, [httpOptions])](#OidcConsumer+revoke) ⇒
 
 <a name="OidcConsumer+scope"></a>
@@ -28,10 +28,10 @@ Middlewares and utilities for OIDC
 scope in which the tokens are issued
 
 **Kind**: instance property of [<code>OidcConsumer</code>](#OidcConsumer)  
-<a name="OidcConsumer+timeout"></a>
+<a name="OidcConsumer+sessionRetryDelayMS"></a>
 
-### oidcConsumer.timeout
-timeout dictates how long to wait when verifying session
+### oidcConsumer.sessionRetryDelayMS
+sessionRetryDelayMS dictates how long to wait when verifying session
 
 **Kind**: instance property of [<code>OidcConsumer</code>](#OidcConsumer)  
 <a name="OidcConsumer+callback_route"></a>
@@ -140,7 +140,7 @@ refresh stale or expired tokens based on a given scope
 
 <a name="OidcConsumer+verifySession"></a>
 
-### oidcConsumer.verifySession(request, response, next, throwError)
+### oidcConsumer.verifySession(request, response, next, retryOnFailure)
 verify session is stored successfully in the store and is queryable
 
 **Kind**: instance method of [<code>OidcConsumer</code>](#OidcConsumer)  
@@ -154,7 +154,7 @@ verify session is stored successfully in the store and is queryable
 | request |  | Express request object |
 | response |  | Express response object |
 | next |  | Express next object |
-| throwError | <code>false</code> | Flag to throw error if found or recursively call itself |
+| retryOnFailure | <code>true</code> | Flag to throw error if found or recursively call itself |
 
 <a name="OidcConsumer+revoke"></a>
 
