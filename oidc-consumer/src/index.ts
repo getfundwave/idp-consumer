@@ -262,7 +262,7 @@ class OidcConsumer {
    * @param retryOnFailure - Flag to throw error if found or recursively call itself
    * @throws SESSION_VERIFICATION_FAILED if session verification fails.
    */ 
-  async verifySession(request: Request, response: Response, next: NextFunction, retryOnFailure: Boolean = true, sessionRetryDelayMS: number = this.timeout) {
+  async verifySession(request: Request, response: Response, next: NextFunction, retryOnFailure: Boolean = true, sessionRetryDelayMS: number = this.sessionRetryDelayMS) {
     await new Promise<void>(resolve => {
       request.session.reload((err) => {
         if(err) {
@@ -289,7 +289,7 @@ class OidcConsumer {
         console.log("error in retry")
       });
     }
-    else if (!state && !retryOnFailure) {
+    else {
       return next(new Error("SESSION_VERIFICATION_FAILED"));
     }
   };

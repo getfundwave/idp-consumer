@@ -2,7 +2,7 @@ import { Session, SessionData, SessionOptions } from "express-session";
 import { ModuleOptions } from "simple-oauth2";
 
 export interface IConsumerOptions {
-  timeout: number;
+  sessionRetryDelayMS: number;
   scope: string;
 
   callback_route?: string;
