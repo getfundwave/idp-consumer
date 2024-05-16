@@ -144,14 +144,14 @@ class OidcConsumer {
       for (const allowedOrigin of allowedUris) {
         if (this.isRedirectUriAllowed(url, allowedOrigin)) return true;
       }
-      else return false;
+    else return false;
   }
 
   getCallbackURL(request: Request) {
     return this.callback_url || `https://${request.headers.host}${this.callback_route || `${request.baseUrl}/callback`}`; // parse and assign callback route
   }
 
-    // returns and stores state for a request
+  // returns and stores state for a request
   #getSessionState(request) {
     const state = uuidv4();
     (request.session as ICustomSession).state = state;
@@ -213,18 +213,18 @@ class OidcConsumer {
           return next(new Error("FAILURE_DESTROYING_SESSION"));
         });
 
-        const token = await this.#oauth2client.getToken(
-          {
-            code: code as string,
-            redirect_uri: this.getCallbackURL(request),
-            scope: this.scope,
-            ...queryParams, // permits passing additional query-params to the IDP
-          } as AuthorizationTokenConfig, // simple-oauth2 doesn't permit passing additional params; hence forcing via types
-          httpOptions
-        );
+      const token = await this.#oauth2client.getToken(
+        {
+          code: code as string,
+          redirect_uri: this.getCallbackURL(request),
+          scope: this.scope,
+          ...queryParams, // permits passing additional query-params to the IDP
+        } as AuthorizationTokenConfig, // simple-oauth2 doesn't permit passing additional params; hence forcing via types
+        httpOptions
+      );
 
-        response.locals.token = token;
-        next();
+      response.locals.token = token;
+      next();
     } catch (error) {
       console.log({ error });
       if (error.message === "FAILURE_DESTROYING_SESSION") return next(new Error("FAILURE_DESTROYING_SESSION"));
