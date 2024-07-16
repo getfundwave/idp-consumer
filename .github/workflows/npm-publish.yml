@@ -35,11 +35,22 @@ jobs:
       matrix:
         package: ${{ fromJSON(needs.changes.outputs.packages) }}
     steps:
+
+      - name: Generate token
+        if: ${{ github.ref_name == 'main' }}
+        id: generate_token
+        uses: tibdex/github-app-token@v2
+        with:
+          app_id: ${{ vars.FUNDABOT_APP_ID }}
+          private_key: ${{ secrets.FUNDABOT_PRIVATE_KEY }}
+
       - uses: actions/checkout@v3
-      - run: |
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          git pull origin ${{ github.ref }}
+        if: ${{ github.ref_name == 'main' }}
+        with:
+          token: ${{ steps.generate_token.outputs.token }}
+
+      - uses: actions/checkout@v3
+        if: ${{ github.ref_name != 'main' }}
 
       - name: ${{ matrix.package }} version bump
         id: version
@@ -98,15 +109,14 @@ jobs:
           npm publish --tag $BRANCH_TAG
 
       - name: Commit changes
-        if: always()
         env:
           VERSION: ${{ steps.version.outputs.newTag }}
         run: |
-          git commit -am "CI: bumped ${{ matrix.package }} version to $VERSION"
+          git config user.email "fundabot@fundwave.com"
+          git config user.name "fundabot"
+          git add package.json package-lock.json
+          git commit -m "CI: bumps ui-utils version to $VERSION" -m "[skip ci]"
+          git tag "v$VERSION" HEAD -m "CI: bumps version to $VERSION"
 
       - name: Push changes
-        if: always()
-        uses: ad-m/github-push-action@master
-        with:
-          github_token: ${{ env.GITHUB_TOKEN }}
-          branch: ${{ github.ref }}
+        run: git push --follow-tags --atomic --no-verify
