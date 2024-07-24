@@ -27,6 +27,7 @@ jobs:
               - 'oidc-consumer/**'
 
   release:
+    environment: ${{ github.ref_name == 'main' && 'Prod' || '' }}
     name: Bump package-version and create release
     runs-on: ubuntu-latest
     needs: changes
@@ -109,14 +110,15 @@ jobs:
           npm publish --tag $BRANCH_TAG
 
       - name: Commit changes
+        if: always()
         env:
           VERSION: ${{ steps.version.outputs.newTag }}
         run: |
           git config user.email "fundabot@fundwave.com"
           git config user.name "fundabot"
-          git add package.json package-lock.json
-          git commit -m "CI: bumps ui-utils version to $VERSION" -m "[skip ci]"
+          git commit -am "CI: bumps oidc-consumer version to $VERSION" -m "[skip ci]"
           git tag "v$VERSION" HEAD -m "CI: bumps version to $VERSION"
 
       - name: Push changes
+        if: always()
         run: git push --follow-tags --atomic --no-verify
