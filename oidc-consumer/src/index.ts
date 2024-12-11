@@ -131,8 +131,8 @@ class OidcConsumer {
     });
 
     request.session.save(async () => {
-      await this.verifySession(request, response, next, false);
-      response.redirect(authorizationURI);
+      const state = await this.verifySession(request, response, next, false);
+      if (state) response.redirect(authorizationURI);
     });
 
   }
@@ -194,11 +194,7 @@ class OidcConsumer {
   async authCallback(request: Request, response: Response, next: NextFunction, queryParams: Object, httpOptions?: WreckHttpOptions) {
     const { code, state } = request.query;
 
-    const sessionState = (request.session as ICustomSession).state;
-    if (!sessionState) {
-      console.log("Verifying session...")
-      await this.verifySession(request, response, next);
-    }
+    const sessionState = (request.session as ICustomSession).state || await this.verifySession(request, response, next);
     if (state !== sessionState)  return next(new Error("SECRET_MISMATCH"));
 
     const destination = (request.session as ICustomSession).redirect_uri;
@@ -274,10 +270,10 @@ class OidcConsumer {
       console.log(error);
       console.log("error loading session from store")
     });
+
     const state = (request.session as ICustomSession).state;
-    if (state) {
-      return next();
-    }
+    if (state) return state;
+
     else if (!state && retryOnFailure) {
       await new Promise<void>(resolve => {
         setTimeout(async () => {
@@ -289,9 +285,7 @@ class OidcConsumer {
         console.log("error in retry")
       });
     }
-    else {
-      return next(new Error("SESSION_VERIFICATION_FAILED"));
-    }
+    else return next(new Error("SESSION_VERIFICATION_FAILED"));
   };
 
   /**

@@ -43,9 +43,9 @@ describe('Authentication Functions', () => {
 
       const next = sinon.spy();
 
-      await consumer.verifySession(req, res, next);
+       const sessionState = await consumer.verifySession(req, res, next);
 
-      expect(next.calledOnce).toBe(true);
+      expect(sessionState).toBe("dummy state../dist/cjs/src/index");
     });
 
     it('should throw an error if session state is not present and throwError is true', async () => {
