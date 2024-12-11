@@ -195,6 +195,7 @@ class OidcConsumer {
     const { code, state } = request.query;
 
     const sessionState = (request.session as ICustomSession).state || await this.verifySession(request, response, next);
+    if(!sessionState) return;
     if (state !== sessionState)  return next(new Error("SECRET_MISMATCH"));
 
     const destination = (request.session as ICustomSession).redirect_uri;
