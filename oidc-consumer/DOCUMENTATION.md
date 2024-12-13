@@ -141,12 +141,12 @@ refresh stale or expired tokens based on a given scope
 <a name="OidcConsumer+loadSession"></a>
 
 ### oidcConsumer.loadSession(request, response, next, retryOnFailure)
-load session in request
+Load the session in request
 
 **Kind**: instance method of [<code>OidcConsumer</code>](#OidcConsumer)  
 **Throws**:
 
-- SESSION_VERIFICATION_FAILED if session verification fails.
+- SESSION_LOAD_FAILED if session load fails.
 
 
 | Param | Default | Description |
