@@ -1,6 +1,6 @@
 {
   "name": "@fundwave/oidc-consumer",
-  "version": "2.0.1-fix-authredirect.6",
+  "version": "2.0.1-fix-authredirect.7",
   "description": "OIDC consumer middlewares and utilities",
   "types": "dist/index.d.ts",
   "exports": {
