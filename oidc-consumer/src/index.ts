@@ -120,7 +120,7 @@ class OidcConsumer {
 
     (request.session as ICustomSession).redirect_uri = String(destination);
 
-    const state = this.#getSessionState(request);
+    const state = this.#setRandomSessionState(request);
     const callbackRedirectURI = this.getCallbackURL(request);
 
     const authorizationURI = this.#oauth2client.authorizeURL({
@@ -152,7 +152,7 @@ class OidcConsumer {
   }
 
   // returns and stores state for a request
-  #getSessionState(request) {
+  #setRandomSessionState(request) {
     const state = uuidv4();
     (request.session as ICustomSession).state = state;
     return state;
@@ -200,6 +200,7 @@ class OidcConsumer {
       await this.loadSession(request, response, next);
     }
     sessionState = (request.session as ICustomSession).state;
+    if(!sessionState) return;
 
     if (state !== sessionState)  return next(new Error("SECRET_MISMATCH"));
 
@@ -290,8 +291,7 @@ class OidcConsumer {
           console.log(error);
           console.log("error in retry");
         });
-      }
-      return next(new Error("SESSION_LOAD_FAILED"));
+      } else return next(new Error("SESSION_LOAD_FAILED"));
     }
   };
 

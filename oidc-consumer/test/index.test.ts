@@ -56,7 +56,7 @@ describe('Authentication Functions', () => {
       const next = sinon.spy();
 
         await consumer.loadSession(req, res, next, true);
-        expect(next.calledOnce).toBe(false);
+        expect(next.calledOnce).toBe(true);
         expect(next.firstCall.args[0]).toBeInstanceOf(Error);
         expect(next.firstCall.args[0].message).toEqual('SESSION_LOAD_FAILED');
     });
