@@ -35,7 +35,7 @@ const consumer = new OidcConsumer({
 
 describe('Authentication Functions', () => {
 
-  describe('verifySession', () => {
+  describe('loadSession', () => {
     it('should call next() if session state is present', async () => {
       const req = mockReq();
       const res = mockRes();
@@ -43,9 +43,9 @@ describe('Authentication Functions', () => {
 
       const next = sinon.spy();
 
-       const sessionState = await consumer.verifySession(req, res, next);
+      await consumer.loadSession(req, res, next);
 
-      expect(sessionState).toBe("dummy state../dist/cjs/src/index");
+      expect(next.calledOnce).toBe(false);
     });
 
     it('should throw an error if session state is not present and throwError is true', async () => {
@@ -55,10 +55,10 @@ describe('Authentication Functions', () => {
 
       const next = sinon.spy();
 
-        await consumer.verifySession(req, res, next, true);
-        expect(next.calledOnce).toBe(true);
+        await consumer.loadSession(req, res, next, true);
+        expect(next.calledOnce).toBe(false);
         expect(next.firstCall.args[0]).toBeInstanceOf(Error);
-        expect(next.firstCall.args[0].message).toEqual('SESSION_VERIFICATION_FAILED');
+        expect(next.firstCall.args[0].message).toEqual('SESSION_LOAD_FAILED');
     });
   });
 

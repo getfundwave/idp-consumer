@@ -131,8 +131,8 @@ class OidcConsumer {
     });
 
     request.session.save(async () => {
-      const state = await this.verifySession(request, response, next, false);
-      if (state) response.redirect(authorizationURI);
+      await this.loadSession(request, response, next, false);
+      response.redirect(authorizationURI);
     });
 
   }
@@ -194,8 +194,11 @@ class OidcConsumer {
   async authCallback(request: Request, response: Response, next: NextFunction, queryParams: Object, httpOptions?: WreckHttpOptions) {
     const { code, state } = request.query;
 
-    const sessionState = (request.session as ICustomSession).state || await this.verifySession(request, response, next);
+    let sessionState = (request.session as ICustomSession).state;
+    if(!sessionState) await this.loadSession(request, response, next);
+    sessionState = (request.session as ICustomSession).state;
     if(!sessionState) return;
+
     if (state !== sessionState)  return next(new Error("SECRET_MISMATCH"));
 
     const destination = (request.session as ICustomSession).redirect_uri;
@@ -252,14 +255,14 @@ class OidcConsumer {
   }
 
   /**
-   * verify session is stored successfully in the store and is queryable
+   * Load the session in request
    * @param request - Express request object
    * @param response - Express response object
    * @param next - Express next object
    * @param retryOnFailure - Flag to throw error if found or recursively call itself
-   * @throws SESSION_VERIFICATION_FAILED if session verification fails.
+   * @throws SESSION_LOAD_FAILED if session load fails.
    */ 
-  async verifySession(request: Request, response: Response, next: NextFunction, retryOnFailure: Boolean = true, sessionRetryDelayMS: number = this.sessionRetryDelayMS) {
+  async loadSession(request: Request, response: Response, next: NextFunction, retryOnFailure: Boolean = true, sessionRetryDelayMS: number = this.sessionRetryDelayMS) {
     await new Promise<void>(resolve => {
       request.session.reload((err) => {
         if(err) {
@@ -273,20 +276,21 @@ class OidcConsumer {
     });
 
     const state = (request.session as ICustomSession).state;
-    if (state) return state;
 
-    else if (!state && retryOnFailure) {
-      await new Promise<void>(resolve => {
-        setTimeout(async () => {
-          await this.verifySession(request, response, next, false);
-          resolve();
-        }, sessionRetryDelayMS );
-      }).catch((error) => {
-        console.log(error);
-        console.log("error in retry")
-      });
+    if (!state) {
+      if (retryOnFailure) {
+        await new Promise<void>((resolve) => {
+          setTimeout(async () => {
+            await this.loadSession(request, response, next, false);
+            resolve();
+          }, sessionRetryDelayMS);
+        }).catch((error) => {
+          console.log(error);
+          console.log("error in retry");
+        });
+      }
+      return next(new Error("SESSION_LOAD_FAILED"));
     }
-    else return next(new Error("SESSION_VERIFICATION_FAILED"));
   };
 
   /**
