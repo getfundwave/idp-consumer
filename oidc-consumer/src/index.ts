@@ -197,7 +197,6 @@ class OidcConsumer {
     let sessionState = (request.session as ICustomSession).state;
     if(!sessionState) await this.loadSession(request, response, next);
     sessionState = (request.session as ICustomSession).state;
-    if(!sessionState) return;
 
     if (state !== sessionState)  return next(new Error("SECRET_MISMATCH"));
 
