@@ -135,7 +135,7 @@ class OidcConsumer {
         await this.loadSession(request.session as ICustomSession, false);
         response.redirect(authorizationURI);
       } catch (error) {
-        console.log("error in loading session @authRedirect", error);
+        console.log("Error in loading session @authRedirect", error);
         return next(new Error(error));
       }
     });
@@ -203,7 +203,7 @@ class OidcConsumer {
       try {
         await this.loadSession(request.session as ICustomSession);
       } catch (error) {
-        console.log("error in loading session @authCallback", error);
+        console.log("Error in loading session @authCallback", error);
         return next(new Error(error));
       }
     }
