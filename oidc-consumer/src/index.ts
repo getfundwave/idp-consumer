@@ -194,13 +194,13 @@ class OidcConsumer {
   async authCallback(request: Request, response: Response, next: NextFunction, queryParams: Object, httpOptions?: WreckHttpOptions) {
     const { code, state } = request.query;
 
-    let sessionState = (request.session as ICustomSession).state;
-    if(!sessionState) {
+    if (!(request.session as ICustomSession).state) {
       console.log("Reloading session because no state in session.");
       await this.loadSession(request, response, next);
     }
-    sessionState = (request.session as ICustomSession).state;
-    if(!sessionState) return;
+  
+    const sessionState = (request.session as ICustomSession).state;
+    if (!sessionState) return;
 
     if (state !== sessionState)  return next(new Error("SECRET_MISMATCH"));
 
