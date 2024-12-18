@@ -266,9 +266,7 @@ class OidcConsumer {
 
   /**
    * Load the session in request
-   * @param request - Express request object
-   * @param response - Express response object
-   * @param next - Express next object
+   * @param session - Express request session
    * @param retryOnFailure - Flag to throw error if found or recursively call itself
    * @throws SESSION_LOAD_FAILED if session load fails.
    */
