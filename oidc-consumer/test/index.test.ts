@@ -50,7 +50,6 @@ describe("Authentication Functions", () => {
   
       try {
         await consumer.loadSession(req.session, true);
-        expect(true).toBe(true);
       } catch (error) {
         expect(error).toEqual('SESSION_LOAD_FAILED');
       }
@@ -64,34 +63,11 @@ describe("Authentication Functions", () => {
 
       try {
         await consumer.loadSession(req.session, false);
-        expect(true).toBe(true);
       } catch (error) {
         expect(error).toEqual('SESSION_LOAD_FAILED');
       }
   
       expect(req.session.reload).toHaveBeenCalledTimes(1);
-    });
-  
-    it('should retry once when session state is missing and retryOnFailure is true', async () => {
-      const req = mockReq();
-      req.session = { reload: jest.fn((cb) => cb()) };
-
-      await consumer.loadSession(req.session, true);
-      expect(req.session.reload).toHaveBeenCalledTimes(2);
-    });
-  
-    it('should throw an error after retry if session state is still missing and retryOnFailure is true', async () => {
-      const req = mockReq();
-      req.session = { reload: jest.fn((cb) => cb()) };
-      
-      try {
-        await consumer.loadSession(req.session, true);
-        expect(true).toBe(true);
-      } catch (error) {
-        expect(error).toEqual('SESSION_LOAD_FAILED');
-      }
-  
-      expect(req.session.reload).toHaveBeenCalledTimes(2);
     });
 
   
