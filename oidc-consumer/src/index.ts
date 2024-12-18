@@ -107,7 +107,7 @@ class OidcConsumer {
   async authRedirect(request: Request, response: Response, next: NextFunction, queryParams?: Object) {
     const { redirectUri: destination } = request.query;
 
-    if (!destination)  return next(new Error("MISSING_DESTINATION"));
+    if (!destination) return next(new Error("MISSING_DESTINATION"));
 
     if (!this.isRedirectUriAllowed(String(destination), this.allowedRedirectURIs)) {
       request.session.destroy((error) => {
@@ -120,7 +120,7 @@ class OidcConsumer {
 
     (request.session as ICustomSession).redirect_uri = String(destination);
 
-    const state = this.#getSessionState(request);
+    const state = this.#setRandomSessionState(request);
     const callbackRedirectURI = this.getCallbackURL(request);
 
     const authorizationURI = this.#oauth2client.authorizeURL({
@@ -131,10 +131,14 @@ class OidcConsumer {
     });
 
     request.session.save(async () => {
-      await this.verifySession(request, response, next, false);
-      response.redirect(authorizationURI);
+      try {
+        await this.loadSession(request.session as ICustomSession, false);
+        response.redirect(authorizationURI);
+      } catch (error) {
+        console.log("Error in loading session @authRedirect", error);
+        return next(new Error(error));
+      }
     });
-
   }
 
   isRedirectUriAllowed(url: string, allowedUris: any) {
@@ -152,7 +156,7 @@ class OidcConsumer {
   }
 
   // returns and stores state for a request
-  #getSessionState(request) {
+  #setRandomSessionState(request) {
     const state = uuidv4();
     (request.session as ICustomSession).state = state;
     return state;
@@ -194,12 +198,18 @@ class OidcConsumer {
   async authCallback(request: Request, response: Response, next: NextFunction, queryParams: Object, httpOptions?: WreckHttpOptions) {
     const { code, state } = request.query;
 
-    const sessionState = (request.session as ICustomSession).state;
-    if (!sessionState) {
-      console.log("Verifying session...")
-      await this.verifySession(request, response, next);
+    if (!(request.session as ICustomSession).state) {
+      console.log("Reloading session because no state in session.");
+      try {
+        await this.loadSession(request.session as ICustomSession);
+      } catch (error) {
+        console.log("Error in loading session @authCallback", error);
+        return next(new Error(error));
+      }
     }
-    if (state !== sessionState)  return next(new Error("SECRET_MISMATCH"));
+    const sessionState = (request.session as ICustomSession).state;
+
+    if (state !== sessionState) return next(new Error("SECRET_MISMATCH"));
 
     const destination = (request.session as ICustomSession).redirect_uri;
 
@@ -255,44 +265,24 @@ class OidcConsumer {
   }
 
   /**
-   * verify session is stored successfully in the store and is queryable
-   * @param request - Express request object
-   * @param response - Express response object
-   * @param next - Express next object
+   * Load the session in request
+   * @param session - Express request session
    * @param retryOnFailure - Flag to throw error if found or recursively call itself
-   * @throws SESSION_VERIFICATION_FAILED if session verification fails.
-   */ 
-  async verifySession(request: Request, response: Response, next: NextFunction, retryOnFailure: Boolean = true, sessionRetryDelayMS: number = this.sessionRetryDelayMS) {
-    await new Promise<void>(resolve => {
-      request.session.reload((err) => {
-        if(err) {
-          console.log(err);
-        }
-      });
-      resolve();
+   * @throws SESSION_LOAD_FAILED if session load fails.
+   */
+  async loadSession(session: ICustomSession, retryOnFailure: Boolean = true, sessionRetryDelayMS: number = this.sessionRetryDelayMS) {
+    await new Promise<void>((resolve, reject) => {
+      session.reload((error) => (error ? reject("SESSION_LOAD_FAILED") : resolve()));
     }).catch((error) => {
-      console.log(error);
-      console.log("error loading session from store")
+      console.log("Error loading session from store", error);
+      if (!retryOnFailure) throw error;
     });
-    const state = (request.session as ICustomSession).state;
-    if (state) {
-      return next();
+
+    if (!session.state && retryOnFailure) {
+      await new Promise<void>((resolve) => setTimeout(resolve, sessionRetryDelayMS));
+      await this.loadSession(session, false);
     }
-    else if (!state && retryOnFailure) {
-      await new Promise<void>(resolve => {
-        setTimeout(async () => {
-          await this.verifySession(request, response, next, false);
-          resolve();
-        }, sessionRetryDelayMS );
-      }).catch((error) => {
-        console.log(error);
-        console.log("error in retry")
-      });
-    }
-    else {
-      return next(new Error("SESSION_VERIFICATION_FAILED"));
-    }
-  };
+  }
 
   /**
    * revokes a given token for a given type

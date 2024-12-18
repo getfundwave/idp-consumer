@@ -19,7 +19,7 @@ Middlewares and utilities for OIDC
     * [.parseCallback()](#OidcConsumer+parseCallback)
     * [.authCallback(request, response, next, queryParams, [httpOptions])](#OidcConsumer+authCallback)
     * [.refresh(token, scope, [httpOptions])](#OidcConsumer+refresh) ⇒
-    * [.verifySession(request, response, next, retryOnFailure)](#OidcConsumer+verifySession)
+    * [.loadSession(session, retryOnFailure)](#OidcConsumer+loadSession)
     * [.revoke(token, token_type, [httpOptions])](#OidcConsumer+revoke) ⇒
 
 <a name="OidcConsumer+scope"></a>
@@ -138,22 +138,20 @@ refresh stale or expired tokens based on a given scope
 | scope | scope for issuing the refreshed tokens (default scope is considered if one isn't passed here) |
 | [httpOptions] | Optional http options passed through the underlying http library while refreshing token |
 
-<a name="OidcConsumer+verifySession"></a>
+<a name="OidcConsumer+loadSession"></a>
 
-### oidcConsumer.verifySession(request, response, next, retryOnFailure)
-verify session is stored successfully in the store and is queryable
+### oidcConsumer.loadSession(session, retryOnFailure)
+Load the session in request
 
 **Kind**: instance method of [<code>OidcConsumer</code>](#OidcConsumer)  
 **Throws**:
 
-- SESSION_VERIFICATION_FAILED if session verification fails.
+- SESSION_LOAD_FAILED if session load fails.
 
 
 | Param | Default | Description |
 | --- | --- | --- |
-| request |  | Express request object |
-| response |  | Express response object |
-| next |  | Express next object |
+| session |  | Express request session |
 | retryOnFailure | <code>true</code> | Flag to throw error if found or recursively call itself |
 
 <a name="OidcConsumer+revoke"></a>
