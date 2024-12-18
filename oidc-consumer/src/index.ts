@@ -107,7 +107,7 @@ class OidcConsumer {
   async authRedirect(request: Request, response: Response, next: NextFunction, queryParams?: Object) {
     const { redirectUri: destination } = request.query;
 
-    if (!destination)  return next(new Error("MISSING_DESTINATION"));
+    if (!destination) return next(new Error("MISSING_DESTINATION"));
 
     if (!this.isRedirectUriAllowed(String(destination), this.allowedRedirectURIs)) {
       request.session.destroy((error) => {
@@ -131,10 +131,14 @@ class OidcConsumer {
     });
 
     request.session.save(async () => {
-      await this.loadSession(request, response, next, false);
-      response.redirect(authorizationURI);
+      try {
+        await this.loadSession(request.session as ICustomSession, false);
+        response.redirect(authorizationURI);
+      } catch (error) {
+        console.log("error in loading session @authRedirect", error);
+        return next(new Error(error));
+      }
     });
-
   }
 
   isRedirectUriAllowed(url: string, allowedUris: any) {
@@ -196,13 +200,16 @@ class OidcConsumer {
 
     if (!(request.session as ICustomSession).state) {
       console.log("Reloading session because no state in session.");
-      await this.loadSession(request, response, next);
+      try {
+        await this.loadSession(request.session as ICustomSession);
+      } catch (error) {
+        console.log("error in loading session @authCallback", error);
+        return next(new Error(error));
+      }
     }
-  
     const sessionState = (request.session as ICustomSession).state;
-    if (!sessionState) return;
 
-    if (state !== sessionState)  return next(new Error("SECRET_MISMATCH"));
+    if (state !== sessionState) return next(new Error("SECRET_MISMATCH"));
 
     const destination = (request.session as ICustomSession).redirect_uri;
 
@@ -264,36 +271,20 @@ class OidcConsumer {
    * @param next - Express next object
    * @param retryOnFailure - Flag to throw error if found or recursively call itself
    * @throws SESSION_LOAD_FAILED if session load fails.
-   */ 
-  async loadSession(request: Request, response: Response, next: NextFunction, retryOnFailure: Boolean = true, sessionRetryDelayMS: number = this.sessionRetryDelayMS) {
-    await new Promise<void>(resolve => {
-      request.session.reload((err) => {
-        if(err) {
-          console.log(err);
-        }
-      });
-      resolve();
+   */
+  async loadSession(session: ICustomSession, retryOnFailure: Boolean = true, sessionRetryDelayMS: number = this.sessionRetryDelayMS) {
+    await new Promise<void>((resolve, reject) => {
+      session.reload((error) => (error ? reject("SESSION_LOAD_FAILED") : resolve()));
     }).catch((error) => {
-      console.log(error);
-      console.log("error loading session from store")
+      console.log("Error loading session from store", error);
+      if (!retryOnFailure) throw error;
     });
 
-    const state = (request.session as ICustomSession).state;
-
-    if (!state) {
-      if (retryOnFailure) {
-        await new Promise<void>((resolve) => {
-          setTimeout(async () => {
-            await this.loadSession(request, response, next, false);
-            resolve();
-          }, sessionRetryDelayMS);
-        }).catch((error) => {
-          console.log(error);
-          console.log("error in retry");
-        });
-      } else return next(new Error("SESSION_LOAD_FAILED"));
+    if (!session.state && retryOnFailure) {
+      await new Promise<void>((resolve) => setTimeout(resolve, sessionRetryDelayMS));
+      await this.loadSession(session, false);
     }
-  };
+  }
 
   /**
    * revokes a given token for a given type
