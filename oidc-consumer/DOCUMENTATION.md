@@ -19,7 +19,7 @@ Middlewares and utilities for OIDC
     * [.parseCallback()](#OidcConsumer+parseCallback)
     * [.authCallback(request, response, next, queryParams, [httpOptions])](#OidcConsumer+authCallback)
     * [.refresh(token, scope, [httpOptions])](#OidcConsumer+refresh) ⇒
-    * [.loadSession(request, response, next, retryOnFailure)](#OidcConsumer+loadSession)
+    * [.loadSession(session, retryOnFailure)](#OidcConsumer+loadSession)
     * [.revoke(token, token_type, [httpOptions])](#OidcConsumer+revoke) ⇒
 
 <a name="OidcConsumer+scope"></a>
@@ -140,7 +140,7 @@ refresh stale or expired tokens based on a given scope
 
 <a name="OidcConsumer+loadSession"></a>
 
-### oidcConsumer.loadSession(request, response, next, retryOnFailure)
+### oidcConsumer.loadSession(session, retryOnFailure)
 Load the session in request
 
 **Kind**: instance method of [<code>OidcConsumer</code>](#OidcConsumer)  
@@ -149,12 +149,10 @@ Load the session in request
 - SESSION_LOAD_FAILED if session load fails.
 
 
-| Param | Description |
-| --- | --- |
-| request | Express request object |
-| response | Express response object |
-| next | Express next object |
-| retryOnFailure | Flag to throw error if found or recursively call itself |
+| Param | Default | Description |
+| --- | --- | --- |
+| session |  | Express request session |
+| retryOnFailure | <code>true</code> | Flag to throw error if found or recursively call itself |
 
 <a name="OidcConsumer+revoke"></a>
 
