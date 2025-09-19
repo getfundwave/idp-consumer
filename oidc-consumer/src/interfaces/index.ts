@@ -1,5 +1,6 @@
 import { Session, SessionData, SessionOptions } from "express-session";
-import { ModuleOptions } from "simple-oauth2";
+import { ModuleOptions,  } from "simple-oauth2";
+export type { WreckHttpOptions } from "simple-oauth2";
 
 export interface IConsumerOptions {
   sessionRetryDelayMS: number;
