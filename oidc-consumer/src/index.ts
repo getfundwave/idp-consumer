@@ -337,7 +337,7 @@ class OidcConsumer {
     // Construct logout URL (OIDC RP-Initiated Logout)
     const logoutURL = `${logoutEndpoint}?post_logout_redirect_uri=${encodeURIComponent(callbackRedirectURI)}&&id_token_hint=${encodeURIComponent(String(id_token_hint))}`;
 
-    window.location.href = logoutURL;
+    response.redirect(logoutURL);
   }
 
   getLogoutCallbackURL(request: Request, redirectUri?: string) {
@@ -394,7 +394,7 @@ class OidcConsumer {
     const decodedRedirectUri = redirectUri ? decodeURIComponent(String(redirectUri)) : undefined;
 
     if (!decodedRedirectUri) {
-      window.location.href = "https://fundwave.app";
+      response.redirect("https://fundwave.app");
       return;
     }
 
@@ -406,7 +406,7 @@ class OidcConsumer {
       return next(new Error("DISALLOWED_REDIRECT_URI"));
     }
 
-    window.location.href = decodedRedirectUri;
+    response.redirect(decodedRedirectUri);
   }
 }
 
