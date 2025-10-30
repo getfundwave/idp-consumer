@@ -10,6 +10,9 @@ Middlewares and utilities for OIDC
     * [.sessionRetryDelayMS](#OidcConsumer+sessionRetryDelayMS)
     * [.callback_route](#OidcConsumer+callback_route)
     * [.callback_url](#OidcConsumer+callback_url)
+    * [.logout_callback_route](#OidcConsumer+logout_callback_route)
+    * [.logout_callback_url](#OidcConsumer+logout_callback_url)
+    * [.logout_endpoint](#OidcConsumer+logout_endpoint)
     * [.allowedRedirectURIs](#OidcConsumer+allowedRedirectURIs)
     * [.sessionOptions](#OidcConsumer+sessionOptions)
     * [.session](#OidcConsumer+session)
@@ -21,6 +24,9 @@ Middlewares and utilities for OIDC
     * [.refresh(token, scope, [httpOptions])](#OidcConsumer+refresh) ⇒
     * [.loadSession(session, retryOnFailure)](#OidcConsumer+loadSession)
     * [.revoke(token, token_type, [httpOptions])](#OidcConsumer+revoke) ⇒
+    * [.logoutRedirect(request, response, next, queryParams)](#OidcConsumer+logoutRedirect) ⇒
+    * [.parseLogoutCallback()](#OidcConsumer+parseLogoutCallback)
+    * [.logoutCallback(request, response, next)](#OidcConsumer+logoutCallback)
 
 <a name="OidcConsumer+scope"></a>
 
@@ -45,6 +51,25 @@ route (internal) on server where idp would redirect to (optional)
 ### oidcConsumer.callback\_url
 route (internal) on server where idp would redirect to (optional)
 defaults to {{response.baseURL}}/callback
+
+**Kind**: instance property of [<code>OidcConsumer</code>](#OidcConsumer)  
+<a name="OidcConsumer+logout_callback_route"></a>
+
+### oidcConsumer.logout\_callback\_route
+route (internal) on server where idp would redirect to after logout (optional)
+
+**Kind**: instance property of [<code>OidcConsumer</code>](#OidcConsumer)  
+<a name="OidcConsumer+logout_callback_url"></a>
+
+### oidcConsumer.logout\_callback\_url
+route (internal) on server where idp would redirect to after logout (optional)
+defaults to {{response.baseURL}}/logout/callback
+
+**Kind**: instance property of [<code>OidcConsumer</code>](#OidcConsumer)  
+<a name="OidcConsumer+logout_endpoint"></a>
+
+### oidcConsumer.logout\_endpoint
+endpoint on the idp to initiate logout (optional)
 
 **Kind**: instance property of [<code>OidcConsumer</code>](#OidcConsumer)  
 <a name="OidcConsumer+allowedRedirectURIs"></a>
@@ -167,4 +192,49 @@ revokes a given token for a given type
 | token | issued token that needs to be revoked |
 | token_type | which type of token needs to be revoked |
 | [httpOptions] | Optional http options passed through the underlying http library while revoking token |
+
+<a name="OidcConsumer+logoutRedirect"></a>
+
+### oidcConsumer.logoutRedirect(request, response, next, queryParams) ⇒
+Initiates logout by redirecting to the IdP's logout endpoint
+
+**Kind**: instance method of [<code>OidcConsumer</code>](#OidcConsumer)  
+**Returns**: void  
+**Throws**:
+
+- MISSING_DESTINATION
+- DISALLOWED_REDIRECT_URI
+
+
+| Param | Description |
+| --- | --- |
+| request | Express request object |
+| response | Express response object |
+| next | Express next object |
+| queryParams | Additional params to be passed in the logout-url |
+
+<a name="OidcConsumer+parseLogoutCallback"></a>
+
+### oidcConsumer.parseLogoutCallback()
+serves the logout-callback route after initiating an express-session (as a middleware) to store state
+
+**Kind**: instance method of [<code>OidcConsumer</code>](#OidcConsumer)  
+<a name="OidcConsumer+logoutCallback"></a>
+
+### oidcConsumer.logoutCallback(request, response, next)
+Handles the callback from the IdP after logout
+
+**Kind**: instance method of [<code>OidcConsumer</code>](#OidcConsumer)  
+**Throws**:
+
+- SECRET_MISMATCH
+- MISSING_DESTINATION
+- FAILURE_DESTROYING_SESSION
+
+
+| Param | Description |
+| --- | --- |
+| request | Express request object |
+| response | Express response object |
+| next | Express next object |
 
