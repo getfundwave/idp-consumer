@@ -5,6 +5,10 @@ export interface IConsumerOptions {
   sessionRetryDelayMS: number;
   scope: string;
 
+  logout_callback_route?: string;
+  logout_callback_url?: string;
+  logout_endpoint?: string;
+
   callback_route?: string;
   default_callback_route?: string;
   callback_url?: string;

@@ -15,6 +15,9 @@ class OidcConsumer {
   sessionRetryDelayMS: number;
   callback_route?: string;
   callback_url?: string;
+  logout_callback_route?: string;
+  logout_callback_url?: string;
+  logout_endpoint?: string;
   allowedRedirectURIs: Array<RegExp | string>;
 
   session: typeof session;
@@ -34,7 +37,6 @@ class OidcConsumer {
      * sessionRetryDelayMS dictates how long to wait when verifying session
      */
     this.sessionRetryDelayMS = options?.sessionRetryDelayMS || 500;
-
     /**
      * route (internal) on server where idp would redirect to (optional)
      */
@@ -44,6 +46,21 @@ class OidcConsumer {
      * defaults to {{response.baseURL}}/callback
      */
     this.callback_url = options?.callback_url;
+
+    /**
+     * route (internal) on server where idp would redirect to after logout (optional)
+     */
+    this.logout_callback_route = options?.logout_callback_route;
+    /**
+     * route (internal) on server where idp would redirect to after logout (optional)
+     * defaults to {{response.baseURL}}/logout/callback
+     */
+    this.logout_callback_url = options?.logout_callback_url;
+
+    /**
+     * endpoint on the idp to initiate logout (optional)
+     */
+    this.logout_endpoint = options?.logout_endpoint;
 
     /**
      * array of allowed-origins; supported types: glob-string, reg-exp
@@ -299,6 +316,97 @@ class OidcConsumer {
     } catch (error) {
       throw error;
     }
+  }
+
+  /**
+   * Initiates logout by redirecting to the IdP's logout endpoint
+   * @param request - Express request object
+   * @param response - Express response object
+   * @param next - Express next object
+   * @param queryParams - Additional params to be passed in the logout-url
+   * @returns void
+   * @throws MISSING_DESTINATION
+   * @throws DISALLOWED_REDIRECT_URI
+   */
+  async logoutRedirect(request: Request, response: Response, next: NextFunction, queryParams?: Object) {
+    const { redirectUri, id_token_hint } = request.query;
+
+    const logoutEndpoint = this.logout_endpoint;
+    const callbackRedirectURI = this.getLogoutCallbackURL(request, String(redirectUri));
+
+    // Construct logout URL (OIDC RP-Initiated Logout)
+    const logoutURL = `${logoutEndpoint}?post_logout_redirect_uri=${encodeURIComponent(callbackRedirectURI)}&&id_token_hint=${encodeURIComponent(String(id_token_hint))}`;
+
+    window.location.href = logoutURL;
+  }
+
+  getLogoutCallbackURL(request: Request, redirectUri?: string) {
+    if (this.logout_callback_url) {
+      // Add redirectUri as a query param if present
+      const url = new URL(this.logout_callback_url);
+      if (redirectUri) {
+      url.searchParams.set("redirectUri", String(redirectUri));
+      }
+      return url.toString();
+    }
+    // fallback to default constructed URL
+    const defaultUrl = `https://${request.headers.host}${this.logout_callback_route || `${request.baseUrl}/logout/callback`}`;
+    if (redirectUri) {
+      const url = new URL(defaultUrl);
+      url.searchParams.set("redirectUri", redirectUri);
+      return url.toString();
+    }
+    return defaultUrl;
+  }
+
+  /**
+   * serves the logout-callback route after initiating an express-session (as a middleware) to store state
+   */
+  parseLogoutCallback() {
+    return [this.#expressSession.bind(this), this.#defaultLogoutCallback.bind(this)];
+  }
+
+  /**
+   * wrapper allowing usage of logoutCallback methods w/o the use of optional http-options
+   * @param request - Express request object
+   * @param response - Express response object
+   * @param next - Express next object
+   * @returns logoutCallback utility
+   * @throws SECRET_MISMATCH
+   * @throws MISSING_DESTINATION
+   * @throws FAILURE_DESTROYING_SESSION
+   */
+  #defaultLogoutCallback(request: Request, response: Response, next: NextFunction) {
+    return this.logoutCallback(request, response, next);
+  }
+
+  /**
+   * Handles the callback from the IdP after logout
+   * @param request - Express request object
+   * @param response - Express response object
+   * @param next - Express next object
+   * @throws SECRET_MISMATCH
+   * @throws MISSING_DESTINATION
+   * @throws FAILURE_DESTROYING_SESSION
+   */
+  async logoutCallback(request: Request, response: Response, next: NextFunction) {
+    const { redirectUri } = request.query;
+    const decodedRedirectUri = redirectUri ? decodeURIComponent(String(redirectUri)) : undefined;
+
+    if (!decodedRedirectUri) {
+      window.location.href = "https://fundwave.app";
+      return;
+    }
+
+    if (!this.isRedirectUriAllowed(decodedRedirectUri, this.allowedRedirectURIs)) {
+      request.session.destroy((error) => {
+        if (!error) return;
+        console.error(error);
+      });
+      return next(new Error("DISALLOWED_REDIRECT_URI"));
+    }
+
+    window.location.href = decodedRedirectUri;
   }
 }
 
