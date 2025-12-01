@@ -1,6 +1,6 @@
 {
   "name": "@fundwave/oidc-consumer",
-  "version": "2.0.1-security-updates.0",
+  "version": "2.0.1",
   "description": "OIDC consumer middlewares and utilities",
   "types": "dist/index.d.ts",
   "exports": {
@@ -13,12 +13,11 @@
     "dist/**/*"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npm run postbuild",
     "postbuild": "npm run build:cjs",
     "build:cjs": "tsc --module commonjs --outDir dist/cjs --declaration false",
     "dev": "tsc --watch",
-    "predocs": "npm run build",
-    "docs": "npx jsdoc-to-markdown dist/index.js > DOCUMENTATION.md",
+    "docs": "npm run build && npx jsdoc-to-markdown dist/index.js > DOCUMENTATION.md",
     "prepublish": "npm run docs",
     "test": "jest"
   },

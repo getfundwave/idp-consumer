@@ -90,11 +90,11 @@ jobs:
       - name: Publish package to Gitlab
         if: always()      
         working-directory: ./${{ matrix.package }}
-        env:
-          GITLAB_TOKEN: ${{secrets.GITLAB_TOKEN}}
         run: |
-          echo @fundwave:registry=https://gitlab.com/api/v4/projects/24877554/packages/npm/ >> ./.npmrc
-          echo //gitlab.com/api/v4/projects/24877554/packages/npm/:_authToken=$GITLAB_TOKEN >> ./.npmrc
+          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> ~/.npmrc
+          echo "legacy-peer-deps=true" >> ~/.npmrc
+          echo "ignore-scripts=true" >> ~/.npmrc
+          npm run prepublish
           npm publish --tag $BRANCH_TAG
 
       - name: Commit changes
