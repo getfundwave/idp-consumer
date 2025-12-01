@@ -1,6 +1,6 @@
 {
   "name": "@fundwave/oidc-consumer",
-  "version": "2.0.1",
+  "version": "2.0.2-github-package.0",
   "description": "OIDC consumer middlewares and utilities",
   "types": "dist/index.d.ts",
   "exports": {
