@@ -9,6 +9,7 @@ export interface IConsumerOptions {
   default_callback_route?: string;
   callback_url?: string;
   allowedRedirectURIs: Array<RegExp | string>;
+  fallbackRedirectUriValidator?: (uri: string) => boolean | Promise<boolean>;
 
   sessionOptions: SessionOptions;
   clientConfig: ModuleOptions<string>;

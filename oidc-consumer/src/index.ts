@@ -16,6 +16,7 @@ class OidcConsumer {
   callback_route?: string;
   callback_url?: string;
   allowedRedirectURIs: Array<RegExp | string>;
+  fallbackRedirectUriValidator?: (uri: string) => boolean | Promise<boolean>;
 
   session: typeof session;
   #expressSession: typeof session;
@@ -49,6 +50,11 @@ class OidcConsumer {
      * array of allowed-origins; supported types: glob-string, reg-exp
      */
     this.allowedRedirectURIs = options.allowedRedirectURIs;
+
+    /**
+     * optional async fallback consulted when the static allowedRedirectURIs check fails (fail closed)
+     */
+    this.fallbackRedirectUriValidator = options?.fallbackRedirectUriValidator;
 
     /**
      * options to be passed to setup express-sessions
@@ -109,7 +115,7 @@ class OidcConsumer {
 
     if (!destination) return next(new Error("MISSING_DESTINATION"));
 
-    if (!this.isRedirectUriAllowed(String(destination), this.allowedRedirectURIs)) {
+    if (!(await this.isRedirectUriAllowedAsync(String(destination)))) {
       request.session.destroy((error) => {
         if (!error) return;
         console.error(error);
@@ -149,6 +155,24 @@ class OidcConsumer {
         if (this.isRedirectUriAllowed(url, allowedOrigin)) return true;
       }
     else return false;
+  }
+
+  /**
+   * checks static allowedRedirectURIs first; on miss, consults fallbackRedirectUriValidator
+   * Fail closed: validator errors/rejections => false
+   * @param url - redirect-uri to validate
+   * @returns whether the redirect-uri is allowed
+   */
+  async isRedirectUriAllowedAsync(url: string): Promise<boolean> {
+    if (this.isRedirectUriAllowed(url, this.allowedRedirectURIs)) return true;
+    if (!this.fallbackRedirectUriValidator) return false;
+
+    try {
+      return Boolean(await this.fallbackRedirectUriValidator(url));
+    } catch (error) {
+      console.error("fallbackRedirectUriValidator failed; denying redirect-uri", url, error);
+      return false;
+    }
   }
 
   getCallbackURL(request: Request) {
@@ -238,6 +262,7 @@ class OidcConsumer {
     } catch (error) {
       console.log({ error });
       if (error.message === "FAILURE_DESTROYING_SESSION") return next(new Error("FAILURE_DESTROYING_SESSION"));
+      return next(error); // propagate to error middleware instead of leaving the request hanging
     }
   }
 
