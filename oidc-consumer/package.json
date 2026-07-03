@@ -20,6 +20,7 @@
     "predocs": "npm run build",
     "docs": "npx jsdoc-to-markdown dist/index.js > DOCUMENTATION.md",
     "prepublishOnly": "npm run docs",
+    "pretest": "npm run build",
     "test": "jest"
   },
   "keywords": [
