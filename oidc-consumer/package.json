@@ -31,6 +31,11 @@
   ],
   "author": "fundwave-authors",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fundwave/idp-consumer.git",
+    "directory": "oidc-consumer"
+  },
   "dependencies": {
     "@types/express-session": "^1.17.5",
     "@types/simple-oauth2": "^5.0.4",
