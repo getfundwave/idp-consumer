@@ -114,50 +114,55 @@ describe("Authentication Functions", () => {
       ...overrides,
     });
 
-    it('should allow a uri matching a static glob without calling a validator function', async () => {
-      const validator = jest.fn().mockResolvedValue(false);
-      const testConsumer = makeConsumer({ allowedRedirectURIs: ["https://allowed.example.com/*", validator] });
+    it('should allow a uri matching a static glob', async () => {
+      const testConsumer = makeConsumer();
 
       await expect(testConsumer.isRedirectUriAllowedAsync('https://allowed.example.com/callback')).resolves.toBe(true);
-      expect(validator).not.toHaveBeenCalled();
     });
 
-    it('should deny a uri failing the static check when no validator function is configured', async () => {
+    it('should deny a uri failing the static check', async () => {
       const testConsumer = makeConsumer();
 
       await expect(testConsumer.isRedirectUriAllowedAsync('https://unknown.example.com/callback')).resolves.toBe(false);
     });
 
-    it('should consult the validator function when the static check fails', async () => {
+    it('should allow when a custom validator function returns true', async () => {
       const validator = jest.fn().mockResolvedValue(true);
-      const testConsumer = makeConsumer({ allowedRedirectURIs: ["https://allowed.example.com/*", validator] });
+      const testConsumer = makeConsumer({ allowedRedirectURIs: validator });
 
       await expect(testConsumer.isRedirectUriAllowedAsync('https://team.example.com/callback')).resolves.toBe(true);
       expect(validator).toHaveBeenCalledWith('https://team.example.com/callback');
     });
 
-    it('should deny when the validator function returns false', async () => {
+    it('should deny when a custom validator function returns false', async () => {
       const validator = jest.fn().mockResolvedValue(false);
-      const testConsumer = makeConsumer({ allowedRedirectURIs: ["https://allowed.example.com/*", validator] });
+      const testConsumer = makeConsumer({ allowedRedirectURIs: validator });
 
       await expect(testConsumer.isRedirectUriAllowedAsync('https://unknown.example.com/callback')).resolves.toBe(false);
     });
 
-    it('should deny (fail closed) when the validator function throws', async () => {
+    it('should deny (fail closed) when the custom validator function throws', async () => {
       const validator = jest.fn().mockRejectedValue(new Error('lookup down'));
-      const testConsumer = makeConsumer({ allowedRedirectURIs: ["https://allowed.example.com/*", validator] });
+      const testConsumer = makeConsumer({ allowedRedirectURIs: validator });
 
+      await expect(testConsumer.isRedirectUriAllowedAsync('https://unknown.example.com/callback')).resolves.toBe(false);
+    });
+
+    it('should support a single RegExp', async () => {
+      const testConsumer = makeConsumer({ allowedRedirectURIs: /^https:\/\/allowed\.example\.com\// });
+
+      await expect(testConsumer.isRedirectUriAllowedAsync('https://allowed.example.com/callback')).resolves.toBe(true);
       await expect(testConsumer.isRedirectUriAllowedAsync('https://unknown.example.com/callback')).resolves.toBe(false);
     });
   });
 
-  describe('authRedirect with validator function in allowedRedirectURIs', () => {
-    it('should error DISALLOWED_REDIRECT_URI when static check and validator both fail', async () => {
+  describe('authRedirect with custom validator', () => {
+    it('should error DISALLOWED_REDIRECT_URI when custom validator denies', async () => {
       const validator = jest.fn().mockResolvedValue(false);
       const testConsumer = new OidcConsumer({
         scope: "openid profile email",
         callback_route: `/${realm}/callback`,
-        allowedRedirectURIs: ["https://allowed.example.com/*", validator],
+        allowedRedirectURIs: validator,
         clientConfig: consumer.clientConfig,
         sessionOptions: consumer.sessionOptions,
       });
@@ -168,6 +173,12 @@ describe("Authentication Functions", () => {
       const next = sinon.spy();
 
       await testConsumer.authRedirect(req, res, next);
+
+      expect(validator).toHaveBeenCalledWith('https://unknown.example.com/callback');
+      expect(next.calledOnce).toBe(true);
+      expect(next.firstCall.args[0].message).toEqual('DISALLOWED_REDIRECT_URI');
+    });
+  });
 
       expect(validator).toHaveBeenCalledWith('https://unknown.example.com/callback');
       expect(next.calledOnce).toBe(true);
