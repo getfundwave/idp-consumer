@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import session, { SessionOptions } from "express-session";
 import { AuthorizationCode, AuthorizationTokenConfig, ModuleOptions, WreckHttpOptions } from "simple-oauth2";
-import { IConsumerOptions, ICustomSession } from "./interfaces/index.js";
+import { IConsumerOptions, ICustomSession, RedirectUriValidator } from "./interfaces/index.js";
 import { v4 as uuidv4 } from "uuid";
 import { AuthDefault, ClientDefault, OptionsDefault } from "./constants/index.js";
 import { minimatch } from "minimatch";
@@ -15,8 +15,7 @@ class OidcConsumer {
   sessionRetryDelayMS: number;
   callback_route?: string;
   callback_url?: string;
-  allowedRedirectURIs: Array<RegExp | string>;
-  fallbackRedirectUriValidator?: (uri: string) => boolean | Promise<boolean>;
+  allowedRedirectURIs: Array<RegExp | string | RedirectUriValidator>;
 
   session: typeof session;
   #expressSession: typeof session;
@@ -47,14 +46,9 @@ class OidcConsumer {
     this.callback_url = options?.callback_url;
 
     /**
-     * array of allowed-origins; supported types: glob-string, reg-exp
+     * array of allowed-origins; supported types: glob-string, reg-exp, validator function
      */
     this.allowedRedirectURIs = options.allowedRedirectURIs;
-
-    /**
-     * optional async fallback consulted when the static allowedRedirectURIs check fails (fail closed)
-     */
-    this.fallbackRedirectUriValidator = options?.fallbackRedirectUriValidator;
 
     /**
      * options to be passed to setup express-sessions
@@ -158,21 +152,24 @@ class OidcConsumer {
   }
 
   /**
-   * checks static allowedRedirectURIs first; on miss, consults fallbackRedirectUriValidator
+   * checks allowedRedirectURIs (strings, RegExps, and validator functions)
    * Fail closed: validator errors/rejections => false
    * @param url - redirect-uri to validate
    * @returns whether the redirect-uri is allowed
    */
   async isRedirectUriAllowedAsync(url: string): Promise<boolean> {
-    if (this.isRedirectUriAllowed(url, this.allowedRedirectURIs)) return true;
-    if (!this.fallbackRedirectUriValidator) return false;
-
-    try {
-      return Boolean(await this.fallbackRedirectUriValidator(url));
-    } catch (error) {
-      console.error("fallbackRedirectUriValidator failed; denying redirect-uri", url, error);
-      return false;
+    for (const entry of this.allowedRedirectURIs) {
+      if (typeof entry === "function") {
+        try {
+          if (await entry(url)) return true;
+        } catch (error) {
+          console.error("redirectUri validator failed; denying redirect-uri", url, error);
+        }
+      } else if (this.isRedirectUriAllowed(url, entry)) {
+        return true;
+      }
     }
+    return false;
   }
 
   getCallbackURL(request: Request) {

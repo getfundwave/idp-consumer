@@ -114,51 +114,50 @@ describe("Authentication Functions", () => {
       ...overrides,
     });
 
-    it('should allow a uri matching the static allowedRedirectURIs without calling the fallback', async () => {
-      const fallback = jest.fn().mockResolvedValue(false);
-      const testConsumer = makeConsumer({ fallbackRedirectUriValidator: fallback });
+    it('should allow a uri matching a static glob without calling a validator function', async () => {
+      const validator = jest.fn().mockResolvedValue(false);
+      const testConsumer = makeConsumer({ allowedRedirectURIs: ["https://allowed.example.com/*", validator] });
 
       await expect(testConsumer.isRedirectUriAllowedAsync('https://allowed.example.com/callback')).resolves.toBe(true);
-      expect(fallback).not.toHaveBeenCalled();
+      expect(validator).not.toHaveBeenCalled();
     });
 
-    it('should deny a uri failing the static check when no fallback is configured', async () => {
+    it('should deny a uri failing the static check when no validator function is configured', async () => {
       const testConsumer = makeConsumer();
 
       await expect(testConsumer.isRedirectUriAllowedAsync('https://unknown.example.com/callback')).resolves.toBe(false);
     });
 
-    it('should consult the fallback when the static check fails', async () => {
-      const fallback = jest.fn().mockResolvedValue(true);
-      const testConsumer = makeConsumer({ fallbackRedirectUriValidator: fallback });
+    it('should consult the validator function when the static check fails', async () => {
+      const validator = jest.fn().mockResolvedValue(true);
+      const testConsumer = makeConsumer({ allowedRedirectURIs: ["https://allowed.example.com/*", validator] });
 
       await expect(testConsumer.isRedirectUriAllowedAsync('https://team.example.com/callback')).resolves.toBe(true);
-      expect(fallback).toHaveBeenCalledWith('https://team.example.com/callback');
+      expect(validator).toHaveBeenCalledWith('https://team.example.com/callback');
     });
 
-    it('should deny when the fallback returns false', async () => {
-      const fallback = jest.fn().mockResolvedValue(false);
-      const testConsumer = makeConsumer({ fallbackRedirectUriValidator: fallback });
+    it('should deny when the validator function returns false', async () => {
+      const validator = jest.fn().mockResolvedValue(false);
+      const testConsumer = makeConsumer({ allowedRedirectURIs: ["https://allowed.example.com/*", validator] });
 
       await expect(testConsumer.isRedirectUriAllowedAsync('https://unknown.example.com/callback')).resolves.toBe(false);
     });
 
-    it('should deny (fail closed) when the fallback throws', async () => {
-      const fallback = jest.fn().mockRejectedValue(new Error('lookup down'));
-      const testConsumer = makeConsumer({ fallbackRedirectUriValidator: fallback });
+    it('should deny (fail closed) when the validator function throws', async () => {
+      const validator = jest.fn().mockRejectedValue(new Error('lookup down'));
+      const testConsumer = makeConsumer({ allowedRedirectURIs: ["https://allowed.example.com/*", validator] });
 
       await expect(testConsumer.isRedirectUriAllowedAsync('https://unknown.example.com/callback')).resolves.toBe(false);
     });
   });
 
-  describe('authRedirect with fallbackRedirectUriValidator', () => {
-    it('should error DISALLOWED_REDIRECT_URI when static check and fallback both fail', async () => {
-      const fallback = jest.fn().mockResolvedValue(false);
+  describe('authRedirect with validator function in allowedRedirectURIs', () => {
+    it('should error DISALLOWED_REDIRECT_URI when static check and validator both fail', async () => {
+      const validator = jest.fn().mockResolvedValue(false);
       const testConsumer = new OidcConsumer({
         scope: "openid profile email",
         callback_route: `/${realm}/callback`,
-        allowedRedirectURIs: ["https://allowed.example.com/*"],
-        fallbackRedirectUriValidator: fallback,
+        allowedRedirectURIs: ["https://allowed.example.com/*", validator],
         clientConfig: consumer.clientConfig,
         sessionOptions: consumer.sessionOptions,
       });
@@ -170,7 +169,7 @@ describe("Authentication Functions", () => {
 
       await testConsumer.authRedirect(req, res, next);
 
-      expect(fallback).toHaveBeenCalledWith('https://unknown.example.com/callback');
+      expect(validator).toHaveBeenCalledWith('https://unknown.example.com/callback');
       expect(next.calledOnce).toBe(true);
       expect(next.firstCall.args[0].message).toEqual('DISALLOWED_REDIRECT_URI');
     });

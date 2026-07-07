@@ -1,6 +1,8 @@
 import { Session, SessionData, SessionOptions } from "express-session";
 import { ModuleOptions } from "simple-oauth2";
 
+export type RedirectUriValidator = (uri: string) => boolean | Promise<boolean>;
+
 export interface IConsumerOptions {
   sessionRetryDelayMS: number;
   scope: string;
@@ -8,8 +10,7 @@ export interface IConsumerOptions {
   callback_route?: string;
   default_callback_route?: string;
   callback_url?: string;
-  allowedRedirectURIs: Array<RegExp | string>;
-  fallbackRedirectUriValidator?: (uri: string) => boolean | Promise<boolean>;
+  allowedRedirectURIs: Array<RegExp | string | RedirectUriValidator>;
 
   sessionOptions: SessionOptions;
   clientConfig: ModuleOptions<string>;
