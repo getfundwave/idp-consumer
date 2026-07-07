@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import session, { SessionOptions } from "express-session";
 import { AuthorizationCode, AuthorizationTokenConfig, ModuleOptions, WreckHttpOptions } from "simple-oauth2";
-import { IConsumerOptions, ICustomSession } from "./interfaces/index.js";
+import { AllowedRedirectURIs, IConsumerOptions, ICustomSession } from "./interfaces/index.js";
 import { v4 as uuidv4 } from "uuid";
 import { AuthDefault, ClientDefault, OptionsDefault } from "./constants/index.js";
 import { minimatch } from "minimatch";
@@ -15,7 +15,7 @@ class OidcConsumer {
   sessionRetryDelayMS: number;
   callback_route?: string;
   callback_url?: string;
-  allowedRedirectURIs: Array<RegExp | string>;
+  allowedRedirectURIs: AllowedRedirectURIs;
 
   session: typeof session;
   #expressSession: typeof session;
@@ -46,7 +46,7 @@ class OidcConsumer {
     this.callback_url = options?.callback_url;
 
     /**
-     * array of allowed-origins; supported types: glob-string, reg-exp
+     * allowed redirect origins: glob-string, RegExp, array of those, or a custom validator function
      */
     this.allowedRedirectURIs = options.allowedRedirectURIs;
 
@@ -109,7 +109,7 @@ class OidcConsumer {
 
     if (!destination) return next(new Error("MISSING_DESTINATION"));
 
-    if (!this.isRedirectUriAllowed(String(destination), this.allowedRedirectURIs)) {
+    if (!(await this.isRedirectUriAllowedAsync(String(destination)))) {
       request.session.destroy((error) => {
         if (!error) return;
         console.error(error);
@@ -149,6 +149,24 @@ class OidcConsumer {
         if (this.isRedirectUriAllowed(url, allowedOrigin)) return true;
       }
     else return false;
+  }
+
+  /**
+   * checks allowedRedirectURIs — delegates to static matcher or custom validator
+   * Fail closed: validator errors/rejections => false
+   * @param url - redirect-uri to validate
+   * @returns whether the redirect-uri is allowed
+   */
+  async isRedirectUriAllowedAsync(url: string): Promise<boolean> {
+    if (typeof this.allowedRedirectURIs === "function") {
+      try {
+        return Boolean(await this.allowedRedirectURIs(url));
+      } catch (error) {
+        console.error("redirectUri validator failed; denying redirect-uri", url, error);
+        return false;
+      }
+    }
+    return Boolean(this.isRedirectUriAllowed(url, this.allowedRedirectURIs));
   }
 
   getCallbackURL(request: Request) {
@@ -238,6 +256,7 @@ class OidcConsumer {
     } catch (error) {
       console.log({ error });
       if (error.message === "FAILURE_DESTROYING_SESSION") return next(new Error("FAILURE_DESTROYING_SESSION"));
+      return next(error); // propagate to error middleware instead of leaving the request hanging
     }
   }
 
