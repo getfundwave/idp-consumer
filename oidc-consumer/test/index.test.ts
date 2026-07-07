@@ -179,10 +179,4 @@ describe("Authentication Functions", () => {
       expect(next.firstCall.args[0].message).toEqual('DISALLOWED_REDIRECT_URI');
     });
   });
-
-      expect(validator).toHaveBeenCalledWith('https://unknown.example.com/callback');
-      expect(next.calledOnce).toBe(true);
-      expect(next.firstCall.args[0].message).toEqual('DISALLOWED_REDIRECT_URI');
-    });
-  });
 });
